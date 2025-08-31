@@ -1,4 +1,4 @@
-use niri_bar_new::config::{ConfigManager, ConfigEvent};
+use niri_bar::config::{ConfigManager, ConfigEvent};
 use std::time::Duration;
 
 #[tokio::main]

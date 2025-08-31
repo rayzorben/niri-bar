@@ -1,4 +1,4 @@
-use niri_bar_new::config::{
+use niri_bar::config::{
     ConfigManager, NiriBarConfig, ModuleConfig, LoggingConfig, ApplicationConfig, 
     MonitorConfig, LayoutConfig
 };

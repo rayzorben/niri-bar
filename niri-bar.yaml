@@ -3,7 +3,7 @@
 # 
 application:
   # Theme configuration
-  theme: "solarized"  # Options: wombat, solarized, dracula
+  theme: "wombat"  # Options: wombat, solarized, dracula
 
   # ---- GLOBAL *MODULE DEFAULTS ----
   modules:

@@ -77,7 +77,7 @@ impl NiriBarLogger {
         // Add class information if enabled
         if self.config.include_class {
             let target = record.target();
-            if target != "niri_bar_new" {
+            if target != "niri_bar" {
                 parts.push(format!("[{}]", target));
             }
         }

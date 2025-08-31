@@ -1,4 +1,4 @@
-use niri_bar_new::config::{ModuleConfig};
+use niri_bar::config::{ModuleConfig};
 use std::collections::HashMap;
 use serde_yaml;
 
@@ -378,7 +378,7 @@ fn test_monitor_bar_thread_safety() {
 }
 
 // Tests moved from src/monitor.rs
-use niri_bar_new::monitor::MonitorInfo;
+use niri_bar::monitor::MonitorInfo;
 
 #[test]
 fn test_monitor_info_creation_from_src() {

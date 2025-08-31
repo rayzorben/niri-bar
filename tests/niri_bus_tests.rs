@@ -1,4 +1,4 @@
-use niri_bar_new::niri::niri_bus;
+use niri_bar::niri::niri_bus;
 
 #[test]
 fn test_niri_bus_initial_focus_and_title() {

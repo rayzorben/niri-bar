@@ -1,4 +1,4 @@
-use niri_bar_new::bar::{Bar, MonitorInfo};
+use niri_bar::bar::{Bar, MonitorInfo};
 
 #[test]
 fn test_bar_creation() {

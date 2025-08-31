@@ -1,5 +1,5 @@
-use niri_bar_new::application::Application;
-use niri_bar_new::config::LoggingConfig;
+use niri_bar::application::Application;
+use niri_bar::config::LoggingConfig;
 
 #[test]
 fn test_application_creation() {

@@ -1,5 +1,5 @@
-use niri_bar_new::ui::{UIManager, MonitorBar};
-use niri_bar_new::config::ConfigManager;
+use niri_bar::ui::{UIManager, MonitorBar};
+use niri_bar::config::ConfigManager;
 
 #[test]
 fn test_monitor_bar_creation() {

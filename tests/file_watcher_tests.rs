@@ -1,4 +1,4 @@
-use niri_bar_new::file_watcher::FileWatcher;
+use niri_bar::file_watcher::FileWatcher;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::fs;

@@ -1,4 +1,4 @@
-use niri_bar_new::file_watcher::FileWatcher;
+use niri_bar::file_watcher::FileWatcher;
 use std::time::Duration;
 
 #[tokio::main]

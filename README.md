@@ -10,7 +10,7 @@ Pixel-perfect, CSS-themed, configuration-driven bar for the Niri Wayland composi
 ## Build and Run
 ```bash
 cargo build --release
-./target/release/niri-bar-new
+./target/release/niri-bar
 ```
 
 ## Configure (YAML is the source of truth)
@@ -74,7 +74,7 @@ cargo clippy -- -D warnings
 
 ## Troubleshooting
 - Ensure Niri is running (Wayland) and `$NIRI_SOCKET` is set by the compositor.
-- If nothing appears: check logs, validate YAML (`cargo test -p niri-bar-new -- tests/config_tests.rs`).
+- If nothing appears: check logs, validate YAML (`cargo test -- tests/config_tests.rs`).
 
 ## Documentation
 See the `wiki/` folder for detailed architecture, configuration, theming, IPC, hot-reload, testing, and logging docs.

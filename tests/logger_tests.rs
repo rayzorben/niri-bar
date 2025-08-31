@@ -1,5 +1,5 @@
-use niri_bar_new::logger::NiriBarLogger;
-use niri_bar_new::config::LoggingConfig;
+use niri_bar::logger::NiriBarLogger;
+use niri_bar::config::LoggingConfig;
 use tempfile::NamedTempFile;
 use std::fs;
 use log::Level;

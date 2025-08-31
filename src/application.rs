@@ -39,7 +39,8 @@ impl Application {
 
         Ok(Self {
             gtk_app,
-            monitors: Arc::new(Mutex::new(HashMap::new())),
+            #[allow(clippy::arc_with_non_send_sync)]
+    monitors: Arc::new(Mutex::new(HashMap::new())),
             config_manager,
             logging_config,
             runtime,
@@ -280,12 +281,11 @@ impl Application {
                     if s > best_spec { best = Some(m); best_spec = s; }
                 }
             }
-            if let Some(m) = best {
-                if let Some(mods) = &m.modules {
-                    for (name, mc) in mods {
-                        if let Some(fmt) = mc.format.clone() {
-                            map.insert(name.clone(), fmt);
-                        }
+            if let Some(m) = best
+                && let Some(mods) = &m.modules {
+                for (name, mc) in mods {
+                    if let Some(fmt) = mc.format.clone() {
+                        map.insert(name.clone(), fmt);
                     }
                 }
             }

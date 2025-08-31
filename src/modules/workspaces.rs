@@ -1,5 +1,7 @@
 use gtk4 as gtk;
 use gtk4::prelude::*;
+use std::rc::Rc;
+use std::cell::RefCell;
 // no direct glib import; prefer gtk::glib to avoid version mismatches
 
 use crate::config::ModuleConfig;
@@ -20,8 +22,9 @@ impl WorkspacesModule {
         // Track last focused id to pulse on change
         let last_focused = std::rc::Rc::new(std::cell::Cell::new(None::<i64>));
         // Track last snapshot to avoid unnecessary rebuilds (prevents hover flicker)
-        let last_snapshot: std::rc::Rc<std::cell::RefCell<Vec<(i64, i64, Option<String>, bool)>>> =
-            std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        #[allow(clippy::type_complexity)]
+        let last_snapshot: Rc<RefCell<Vec<(i64, i64, Option<String>, bool)>>> =
+            Rc::new(RefCell::new(Vec::new()));
         // Build initial buttons
         Self::rebuild_buttons(&container, show_numbers, &last_focused);
 
@@ -49,30 +52,27 @@ impl WorkspacesModule {
 
         // Mouse scroll to cycle workspaces (throttled)
         container.add_controller({
-            let scroll_wrap = scroll_wrap;
-            let busy = std::rc::Rc::new(std::cell::Cell::new(false));
+            let busy = Rc::new(RefCell::new(false));
             let gesture = gtk::EventControllerScroll::new(
                 gtk::EventControllerScrollFlags::VERTICAL | gtk::EventControllerScrollFlags::DISCRETE,
             );
             gesture.connect_scroll(move |_, _dx, dy| {
-                if busy.get() { return gtk::glib::Propagation::Proceed; }
-                busy.set(true);
+                if *busy.borrow() { return gtk::glib::Propagation::Proceed; }
+                *busy.borrow_mut() = true;
                 log::info!("Workspaces: 🛞 scroll dy={:.3}", dy);
-                if dy < 0.0 {
-                    if let Some(idx) = niri_bus().next_prev_workspace_idx(true, scroll_wrap) {
-                        log::info!("Workspaces: ➡️ focus idx {}", idx);
-                        let _ = focus_workspace_index(idx);
-                    }
-                } else if dy > 0.0 {
-                    if let Some(idx) = niri_bus().next_prev_workspace_idx(false, scroll_wrap) {
-                        log::info!("Workspaces: ⬅️ focus idx {}", idx);
-                        let _ = focus_workspace_index(idx);
-                    }
+                if dy < 0.0
+                    && let Some(idx) = niri_bus().next_prev_workspace_idx(true, scroll_wrap) {
+                    log::info!("Workspaces: ➡️ focus idx {}", idx);
+                    let _ = focus_workspace_index(idx);
+                } else if dy > 0.0
+                    && let Some(idx) = niri_bus().next_prev_workspace_idx(false, scroll_wrap) {
+                    log::info!("Workspaces: ⬅️ focus idx {}", idx);
+                    let _ = focus_workspace_index(idx);
                 }
                 // release throttle shortly after to avoid flooding IPC
                 let busy_reset = busy.clone();
                 glib::timeout_add_local(std::time::Duration::from_millis(120), move || {
-                    busy_reset.set(false);
+                    *busy_reset.borrow_mut() = false;
                     glib::ControlFlow::Break
                 });
                 gtk::glib::Propagation::Proceed

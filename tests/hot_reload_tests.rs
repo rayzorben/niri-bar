@@ -7,11 +7,13 @@ use tokio::time::sleep;
 #[tokio::test]
 async fn test_yaml_hot_reload() {
     // Test that YAML configuration changes are detected and reloaded
-    let config_path = "niri-bar.yaml";
-    
+    // Use a temporary file to avoid interfering with other tests
+    let temp_config_path = "test-config-temp.yaml";
+    let original_config_path = "niri-bar.yaml";
+
     // Read original content
-    let original_content = fs::read_to_string(config_path).expect("Failed to read config file");
-    
+    let original_content = fs::read_to_string(original_config_path).expect("Failed to read config file");
+
     // Create a temporary modified version - replace whatever theme is there with solarized
     let modified_content = if original_content.contains("theme: \"wombat\"") {
         original_content.replace("theme: \"wombat\"", "theme: \"solarized\"")
@@ -20,44 +22,46 @@ async fn test_yaml_hot_reload() {
     } else {
         original_content.replace("theme: \"solarized\"", "theme: \"solarized\"")
     };
-    
-    // Write modified content
-    fs::write(config_path, &modified_content).expect("Failed to write modified config");
-    
+
+    // Write modified content to temp file
+    fs::write(temp_config_path, &modified_content).expect("Failed to write modified config");
+
     // Give the file watcher time to detect the change
-    sleep(Duration::from_millis(500)).await;
-    
-    // Verify the change was written to the file
-    let current_content = fs::read_to_string(config_path).expect("Failed to read config file");
+    sleep(Duration::from_millis(50)).await;
+
+    // Verify the change was written to the temp file
+    let current_content = fs::read_to_string(temp_config_path).expect("Failed to read temp config file");
     assert!(current_content.contains("theme: \"solarized\""));
-    
-    // Restore original content
-    fs::write(config_path, original_content).expect("Failed to restore original config");
+
+    // Clean up temp file
+    fs::remove_file(temp_config_path).expect("Failed to remove temp config file");
 }
 
 #[tokio::test]
 async fn test_css_hot_reload() {
     // Test that CSS theme file changes are detected
-    let css_path = "themes/wombat.css";
-    
+    // Use a temporary file to avoid interfering with other tests
+    let temp_css_path = "test-theme-temp.css";
+    let original_css_path = "themes/wombat.css";
+
     // Read original content
-    let original_content = fs::read_to_string(css_path).expect("Failed to read CSS file");
-    
+    let original_content = fs::read_to_string(original_css_path).expect("Failed to read CSS file");
+
     // Create a temporary modified version with a comment
     let modified_content = format!("/* Modified for test */\n{}", original_content);
-    
-    // Write modified content
-    fs::write(css_path, &modified_content).expect("Failed to write modified CSS");
-    
+
+    // Write modified content to temp file
+    fs::write(temp_css_path, &modified_content).expect("Failed to write modified CSS");
+
     // Give the file watcher time to detect the change
-    sleep(Duration::from_millis(500)).await;
-    
-    // Verify the change was written
-    let current_content = fs::read_to_string(css_path).expect("Failed to read CSS file");
+    sleep(Duration::from_millis(50)).await;
+
+    // Verify the change was written to the temp file
+    let current_content = fs::read_to_string(temp_css_path).expect("Failed to read temp CSS file");
     assert!(current_content.contains("/* Modified for test */"));
-    
-    // Restore original content
-    fs::write(css_path, original_content).expect("Failed to restore original CSS");
+
+    // Clean up temp file
+    fs::remove_file(temp_css_path).expect("Failed to remove temp CSS file");
 }
 
 #[test]

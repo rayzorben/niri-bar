@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use tokio::sync::watch;
 use notify::{Watcher, RecursiveMode, Event};
 use anyhow::Result;
-use std::time::Duration;
+
 
 /// Callback function type for file events
 pub type FileEventCallback = Box<dyn Fn(PathBuf, Vec<u8>) + Send + Sync>;

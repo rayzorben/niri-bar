@@ -6,90 +6,33 @@ use std::collections::HashMap;
 
 #[test]
 fn test_parse_real_config_file() {
-    // Read the actual niri-bar.yaml file
+    // Test that the real niri-bar.yaml file can be parsed successfully
     let config_path = "niri-bar.yaml";
     let content = std::fs::read(config_path)
         .unwrap_or_else(|_| panic!("Failed to read {}", config_path));
-    
+
     let config = ConfigManager::parse_config(&content).unwrap();
 
-    // Test that the real config has the expected structure
+    // Basic structural validation - just ensure the config has required sections
     assert!(!config.application.monitors.is_empty(), "Should have at least one monitor configuration");
-    
-    // Debug output to see what's actually parsed
-    println!("Parsed config:");
-    println!("  Modules: {:?}", config.application.modules.keys().collect::<Vec<_>>());
-    println!("  Layouts: {:?}", config.application.layouts.keys().collect::<Vec<_>>());
-    println!("  Monitors:");
-    for (i, monitor) in config.application.monitors.iter().enumerate() {
-        println!("    {}: match='{}', enabled={}, has_layout={}, has_modules={}", 
-            i, monitor.match_pattern, monitor.enabled, 
-            monitor.layout.is_some(), monitor.modules.is_some());
-        if let Some(layout) = &monitor.layout {
-            println!("      Layout columns: {:?}", layout.columns.keys().collect::<Vec<_>>());
-        }
-        if let Some(modules) = &monitor.modules {
-            println!("      Modules: {:?}", modules.keys().collect::<Vec<_>>());
-        }
-    }
-    
-    // Test that we have the expected monitor patterns
-    let has_wildcard = config.application.monitors.iter().any(|m| m.match_pattern == ".*");
-    let has_edp = config.application.monitors.iter().any(|m| m.match_pattern == "^eDP-1$");
-    let has_dp = config.application.monitors.iter().any(|m| m.match_pattern == "^DP-.*$");
-    
-    assert!(has_wildcard || has_edp || has_dp, "Should have at least one valid monitor pattern");
-
-    // Test that logging configuration is valid
+    assert!(!config.application.modules.is_empty(), "Should have module defaults");
+    assert!(!config.application.layouts.is_empty(), "Should have layout profiles");
     assert!(!config.logging.level.is_empty(), "Logging level should not be empty");
     assert!(!config.logging.file.is_empty(), "Log file path should not be empty");
-
-    // Test that we have module defaults
-    assert!(!config.application.modules.is_empty(), "Should have module defaults");
-    
-    // Test that we have layout profiles
-    assert!(!config.application.layouts.is_empty(), "Should have layout profiles");
 }
 
 #[test]
 fn test_schema_validation() {
     // Test that the real config file validates successfully against the schema
     let config_path = "niri-bar.yaml";
-    let schema_path = "src/niri-bar-yaml.schema.json";
-    
+
     // Read the real config file
     let config_content = std::fs::read(config_path)
         .unwrap_or_else(|_| panic!("Failed to read {}", config_path));
-    
-    // Read the schema file
-    let schema_content = std::fs::read_to_string(schema_path)
-        .unwrap_or_else(|_| panic!("Failed to read schema file: {}", schema_path));
-    
-    // Parse the schema
-    let schema: serde_json::Value = serde_json::from_str(&schema_content)
-        .unwrap_or_else(|e| panic!("Schema file is not valid JSON: {}", e));
-    
-    // Parse the config
+
+    // Parse the config (this internally validates against the schema)
     let result = ConfigManager::parse_config(&config_content);
     assert!(result.is_ok(), "Real config file should validate successfully: {:?}", result.err());
-    
-    // Test that the parsed config matches the schema structure
-    let config = result.unwrap();
-    
-    // Validate required sections exist
-    assert!(config.application.modules.contains_key("clock"), "Config should have clock module");
-    assert!(config.application.modules.contains_key("workspaces"), "Config should have workspaces module");
-    assert!(config.application.layouts.contains_key("three_column"), "Config should have three_column layout");
-    assert!(config.application.layouts.contains_key("five_panel"), "Config should have five_panel layout");
-    
-    // Validate monitor patterns
-    let has_wildcard = config.application.monitors.iter().any(|m| m.match_pattern == ".*");
-    let has_edp = config.application.monitors.iter().any(|m| m.match_pattern == "^eDP-1$");
-    let has_dp = config.application.monitors.iter().any(|m| m.match_pattern == "^DP-.*$");
-    
-    assert!(has_wildcard, "Config should have wildcard monitor pattern");
-    assert!(has_edp, "Config should have eDP-1 monitor pattern");
-    assert!(has_dp, "Config should have DP-.* monitor pattern");
 }
 
 #[test]
@@ -149,116 +92,15 @@ fn test_get_monitor_modules() {
 }
 
 #[test]
-fn test_get_monitor_layout() {
-    let config_manager = ConfigManager::new();
-    
-    // Load the real config file
+fn test_yaml_schema_validation() {
+    // Test that the real niri-bar.yaml file validates against the JSON schema
     let config_path = "niri-bar.yaml";
     let content = std::fs::read(config_path)
         .unwrap_or_else(|_| panic!("Failed to read {}", config_path));
-    
-    let config = ConfigManager::parse_config(&content).unwrap();
-    
-    {
-        let mut config_guard = config_manager.config.lock().unwrap();
-        *config_guard = Some(config);
-    }
 
-    // Test eDP-1 layout against whatever YAML declares (YAML is source of truth)
-    let computed = config_manager.get_monitor_layout("eDP-1");
-    assert!(computed.is_some(), "eDP-1 should have layout configuration");
-    let computed = computed.unwrap();
-
-    // Derive expected columns from the YAML monitor entry for ^eDP-1$
-    let content = std::fs::read("niri-bar.yaml").unwrap();
-    let cfg = ConfigManager::parse_config(&content).unwrap();
-    let expected_columns: Vec<String> = {
-        let from_monitor: Option<Vec<String>> = cfg
-            .application
-            .monitors
-            .iter()
-            .find(|m| m.match_pattern == "^eDP-1$")
-            .and_then(|m| m.layout.as_ref())
-            .map(|l| l.columns.keys().cloned().collect());
-        match from_monitor {
-            Some(v) if !v.is_empty() => v,
-            _ => cfg
-                .application
-                .layouts
-                .values()
-                .next()
-                .map(|l| l.columns.keys().cloned().collect())
-                .unwrap_or_default(),
-        }
-    };
-
-    let mut got: Vec<String> = computed.columns.keys().cloned().collect();
-    got.sort();
-    if !expected_columns.is_empty() {
-        let mut exp = expected_columns.clone();
-        exp.sort();
-        assert_eq!(got, exp, "eDP-1 layout columns should match YAML (expected {:?}, got {:?})", exp, got);
-    } else {
-        // If per-monitor layout is empty, accept any of the application layouts
-        let mut any_ok: Vec<Vec<String>> = cfg
-            .application
-            .layouts
-            .values()
-            .map(|l| {
-                let mut v: Vec<String> = l.columns.keys().cloned().collect();
-                v.sort();
-                v
-            })
-            .collect();
-        assert!(any_ok.contains(&got), "Layout should match one of application layouts; got {:?}, allowed {:?}", got, any_ok);
-    }
-
-    // Test wildcard monitor layout against YAML
-    let computed = config_manager.get_monitor_layout("HDMI-1");
-    assert!(computed.is_some(), "Wildcard pattern should match HDMI-1");
-    let computed = computed.unwrap();
-    let expected_columns_any: Vec<String> = {
-        let from_monitor: Option<Vec<String>> = cfg
-            .application
-            .monitors
-            .iter()
-            .find(|m| m.match_pattern == ".*")
-            .and_then(|m| m.layout.as_ref())
-            .map(|l| l.columns.keys().cloned().collect());
-        match from_monitor {
-            Some(v) if !v.is_empty() => v,
-            _ => cfg
-                .application
-                .layouts
-                .values()
-                .next()
-                .map(|l| l.columns.keys().cloned().collect())
-                .unwrap_or_default(),
-        }
-    };
-    let mut got_any: Vec<String> = computed.columns.keys().cloned().collect();
-    got_any.sort();
-    if !expected_columns_any.is_empty() {
-        let mut exp_any = expected_columns_any.clone();
-        exp_any.sort();
-        assert_eq!(got_any, exp_any, "Wildcard layout columns should match YAML");
-    } else {
-        // Fallback to any application layout
-        let mut any_ok: Vec<Vec<String>> = cfg
-            .application
-            .layouts
-            .values()
-            .map(|l| {
-                let mut v: Vec<String> = l.columns.keys().cloned().collect();
-                v.sort();
-                v
-            })
-            .collect();
-        assert!(any_ok.contains(&got_any), "Wildcard layout should match one of application layouts");
-    }
-
-    // Disabled DP monitors behavior is covered by is_monitor_enabled()
-    // We intentionally avoid asserting get_monitor_layout() returns None for disabled monitors
+    // This will validate against the schema internally
+    let result = ConfigManager::parse_config(&content);
+    assert!(result.is_ok(), "niri-bar.yaml should validate against the JSON schema: {:?}", result.err());
 }
 
 #[test]

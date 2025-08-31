@@ -1,22 +1,48 @@
 /* Wombat Theme - Warm dark theme with brown/orange accents */
 
-/* Global bar styling */
+/* === Top-level elements === */
 window {
-    background-color: #242424;
-    border: 2px solid #8f8f8f;
+    background-color: transparent;
+    border: none;
     border-radius: 0px;
     color: #f6f3e8;
     font-family: 'Sans', sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
 }
+
+/* Columns container */
+.bar-columns {
+    padding: 2px 6px;
+}
+
+/* Individual columns */
+.bar-columns > .column {
+    background-color: #242424;
+    border: 1px solid #8f8f8f;
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin: 0 6px;
+}
+
+/* Outline helper neutralized */
+.column-outline { border: none; padding: 0; }
+
+/* Kebab visibility by overflow policy */
+.column-kebab { opacity: 0.9; }
+.overflow-hide .column-kebab { display: none; }
+.overflow-kebab .column-kebab { display: inline; }
 
 /* Base label styling */
 label {
     color: #f6f3e8;
-    padding: 8px 16px;
+    padding: 0 6px;
     background: transparent;
 }
+
+/* Ensure columns can shrink within flex container and title has a sane minimum */
+.bar-columns > .column { min-width: 0; }
+.module-window-title { min-width: 10ch; }
 
 /* Monitor-specific styling */
 #monitor-eDP-1 label {
@@ -80,21 +106,9 @@ label {
     color: #f4bf75;
 }
 
-/* Outline each column to visualize sections while labels are removed */
-.column-outline {
-    border: 1px solid rgba(255,255,255,0.8);
-    border-radius: 2px;
-    padding: 2px 4px;
-}
-
-/* Kebab visibility by overflow policy */
-.column-kebab { opacity: 0.9; }
-.overflow-hide .column-kebab { display: none; }
-.overflow-kebab .column-kebab { display: inline; }
-
 .module-clock {
     color: #ffffff;
-    padding: 0 8px;
+    padding: 0 6px;
 }
 
 /* Specific combinations */

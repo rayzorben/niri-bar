@@ -14,6 +14,8 @@ impl WindowTitleModule {
         label.add_css_class("module-window-title");
         label.set_ellipsize(gtk::pango::EllipsizeMode::End);
         label.set_xalign(0.0);
+        // Allow the label to shrink but keep a minimum width controlled via CSS
+        label.set_hexpand(false);
 
         // Set initial title from bus state
         let bus = niri_bus();

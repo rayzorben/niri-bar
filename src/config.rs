@@ -423,10 +423,7 @@ impl ConfigManager {
     /// Get layout configuration for a specific monitor
     pub fn get_monitor_layout(&self, monitor_name: &str) -> Option<LayoutConfig> {
         let config_guard = self.config.lock().unwrap();
-        let config = match config_guard.as_ref() {
-            Some(config) => config,
-            None => return None,
-        };
+        let config = config_guard.as_ref()?;
 
         // Collect all matching monitor configs with specificity
         let mut matches: Vec<(&MonitorConfig, u32)> = config
@@ -441,10 +438,9 @@ impl ConfigManager {
 
         // Prefer the first with a non-empty layout.columns
         for (mc, _spec) in &matches {
-            if let Some(layout) = mc.layout.clone() {
-                if !layout.columns.is_empty() {
-                    return Some(layout);
-                }
+            if let Some(layout) = mc.layout.clone()
+                && !layout.columns.is_empty() {
+                return Some(layout);
             }
         }
 
@@ -452,16 +448,13 @@ impl ConfigManager {
         if let Some(l) = config.application.layouts.get("three_column") {
             return Some(l.clone());
         }
-        config.application.layouts.values().cloned().next()
+        config.application.layouts.values().next().cloned()
     }
 
     /// Get module configuration for a specific monitor
     pub fn get_monitor_modules(&self, monitor_name: &str) -> Option<HashMap<String, ModuleConfig>> {
         let config_guard = self.config.lock().unwrap();
-        let config = match config_guard.as_ref() {
-            Some(config) => config,
-            None => return None,
-        };
+        let config = config_guard.as_ref()?;
 
         // Start from global module defaults
         let mut merged: HashMap<String, ModuleConfig> = config.application.modules.clone();
@@ -478,11 +471,10 @@ impl ConfigManager {
                 }
             }
         }
-        if let Some(mc) = best_match {
-            if let Some(overrides) = &mc.modules {
-                for (k, v) in overrides {
-                    merged.insert(k.clone(), v.clone());
-                }
+        if let Some(mc) = best_match
+            && let Some(overrides) = &mc.modules {
+            for (k, v) in overrides {
+                merged.insert(k.clone(), v.clone());
             }
         }
 
@@ -492,10 +484,7 @@ impl ConfigManager {
     /// Get global module defaults
     pub fn get_global_modules(&self) -> Option<HashMap<String, ModuleConfig>> {
         let config_guard = self.config.lock().unwrap();
-        let config = match config_guard.as_ref() {
-            Some(config) => config,
-            None => return None,
-        };
+        let config = config_guard.as_ref()?;
 
         Some(config.application.modules.clone())
     }
@@ -503,10 +492,7 @@ impl ConfigManager {
     /// Get layout profiles
     pub fn get_layouts(&self) -> Option<HashMap<String, LayoutConfig>> {
         let config_guard = self.config.lock().unwrap();
-        let config = match config_guard.as_ref() {
-            Some(config) => config,
-            None => return None,
-        };
+        let config = config_guard.as_ref()?;
 
         Some(config.application.layouts.clone())
     }
@@ -534,8 +520,7 @@ impl ConfigManager {
             return true;
         }
         
-        if pattern.ends_with(".*") {
-            let prefix = &pattern[..pattern.len() - 2];
+        if let Some(prefix) = pattern.strip_suffix(".*") {
             return monitor_name.starts_with(prefix);
         }
         

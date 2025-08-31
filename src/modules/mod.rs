@@ -1,5 +1,4 @@
 use gtk4 as gtk;
-use gtk4::prelude::*;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
@@ -34,10 +33,6 @@ fn resolve_identifier(name: &str) -> String {
 /// Create a module widget dynamically based on the YAML module name and merged settings.
 pub fn create_module_widget(module_name: &str, settings: &crate::config::ModuleConfig) -> Option<gtk::Widget> {
     let ident = resolve_identifier(module_name);
-    if let Some(factory) = REGISTRY.get(ident.as_str()) {
-        Some(factory(settings))
-    } else {
-        None
-    }
+    REGISTRY.get(ident.as_str()).map(|factory| factory(settings))
 }
 

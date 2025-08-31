@@ -177,8 +177,9 @@ impl Bar {
             self.container.remove(&child);
         }
 
+        let columns_count = column_names.len().max(1) as i32;
         for name in column_names {
-            let safe = name.replace(' ', "_").replace('-', "_");
+            let safe = name.replace([' ', '-'], "_");
             let column_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
             column_box.set_hexpand(true);
             column_box.set_halign(gtk::Align::Fill);
@@ -193,8 +194,11 @@ impl Bar {
 
             column_box.append(&label);
 
-            // Placeholder kebab button and popover list; visibility and items decided by overflow policy later
-            let kebab = MenuButton::builder().has_frame(false).icon_name("open-menu-symbolic").build();
+            // Placeholder kebab button and popover list; visibility toggled on actual overflow
+            let kebab = MenuButton::builder()
+                .has_frame(false)
+                .icon_name("view-more-symbolic")
+                .build();
             kebab.add_css_class("column-kebab");
             kebab.add_css_class(&format!("column-kebab-{}", safe));
             let popover = Popover::new();
@@ -202,7 +206,14 @@ impl Bar {
             list.add_css_class("column-kebab-list");
             popover.set_child(Some(&list));
             kebab.set_popover(Some(&popover));
+            kebab.set_visible(false);
             column_box.append(&kebab);
+
+            // Approximate overflow check using monitor logical width divided by number of columns
+            let available_w = (self.monitor_info.logical_size.0 / columns_count).max(1);
+            let (_min_w, nat_w, _min_h, _nat_h) = column_box.measure(gtk::Orientation::Horizontal, -1);
+            let is_overflowing = nat_w > available_w;
+            kebab.set_visible(is_overflowing);
 
             self.container.append(&column_box);
         }
@@ -217,8 +228,9 @@ impl Bar {
             self.container.remove(&child);
         }
 
+        let columns_count = columns.len().max(1) as i32;
         for (name, spec) in columns {
-            let safe = name.replace(' ', "_").replace('-', "_");
+            let safe = name.replace([' ', '-'], "_");
             let column_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
             column_box.set_hexpand(true);
             column_box.set_halign(gtk::Align::Fill);
@@ -229,7 +241,8 @@ impl Bar {
                 ColumnOverflowPolicy::Kebab => column_box.add_css_class("overflow-kebab"),
             }
 
-            // Build module widgets dynamically via registry
+            // Build module widgets dynamically via registry (collect first, decide overflow later)
+            let mut module_widgets: Vec<gtk::Widget> = Vec::new();
             for module in &spec.modules {
                 // Merge module settings from provided format map into a minimal settings struct
                 let settings = crate::config::ModuleConfig {
@@ -250,22 +263,21 @@ impl Bar {
                 };
 
                 if let Some(widget) = create_module_widget(module, &settings) {
-                    column_box.append(&widget);
+                    module_widgets.push(widget);
                 } else {
                     // Unknown module: skip rendering silently
-                    log::warn!("Bar: unknown module '{}', skipping", module);
+                    log::warn!("Bar: unknown module '{}' , skipping", module);
                 }
             }
 
-            // Kebab menu, only visible if overflow policy is kebab (CSS can hide by default)
-            let kebab = MenuButton::builder().has_frame(false).icon_name("open-menu-symbolic").build();
+            // Kebab menu (three vertical dots). Only show when actual overflow for kebab policy
+            let kebab = MenuButton::builder()
+                .has_frame(false)
+                .icon_name("view-more-symbolic")
+                .build();
             kebab.add_css_class("column-kebab");
             kebab.add_css_class(&format!("column-kebab-{}", safe));
-            if let ColumnOverflowPolicy::Kebab = spec.overflow {
-                kebab.set_visible(true);
-            } else {
-                kebab.set_visible(false);
-            }
+            kebab.set_visible(false);
             let popover = Popover::new();
             let list = ListBox::new();
             list.add_css_class("column-kebab-list");
@@ -275,6 +287,42 @@ impl Bar {
 
             // CSS border for columns to visualize sections
             column_box.add_css_class("column-outline");
+
+            // Place widgets; overflow extras into kebab popover list
+            let available_w = (self.monitor_info.logical_size.0 / columns_count).max(1);
+            let (_k_min_w, kebab_nat_w, _k_min_h, _k_nat_h) = kebab.measure(gtk::Orientation::Horizontal, -1);
+            let mut used_w = 0;
+            let mut overflowed: Vec<gtk::Widget> = Vec::new();
+
+            for w in &module_widgets {
+                let (_m_min_w, m_nat_w, _m_min_h, _m_nat_h) = w.measure(gtk::Orientation::Horizontal, -1);
+                let budget = if matches!(spec.overflow, ColumnOverflowPolicy::Kebab) { available_w - kebab_nat_w } else { available_w };
+                if used_w + m_nat_w <= budget {
+                    used_w += m_nat_w;
+                } else {
+                    overflowed.push(w.clone());
+                }
+            }
+
+            // Append widgets that fit
+            for w in &module_widgets {
+                if !overflowed.iter().any(|ow| ow == w) {
+                    column_box.append(w);
+                }
+            }
+
+            // Move overflowed widgets into popover as rows
+            for w in overflowed {
+                if matches!(spec.overflow, ColumnOverflowPolicy::Kebab) {
+                    let row = gtk::ListBoxRow::new();
+                    row.add_css_class("column-overflow-row");
+                    row.set_child(Some(&w));
+                    list.append(&row);
+                }
+            }
+
+            // Show kebab only if there is at least one overflowed item
+            kebab.set_visible(list.first_child().is_some());
 
             self.container.append(&column_box);
         }

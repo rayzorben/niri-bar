@@ -29,7 +29,7 @@ impl NiriIpc {
         thread::spawn(move || {
             match UnixStream::connect(&path) {
                 Ok(mut stream) => {
-                    if let Err(e) = write!(stream, "\"EventStream\"\n") { eprintln!("Niri IPC: write error: {}", e); return; }
+                    if let Err(e) = writeln!(stream, "\"EventStream\"") { eprintln!("Niri IPC: write error: {}", e); return; }
                     if let Err(e) = stream.flush() { eprintln!("Niri IPC: flush error: {}", e); return; }
                     let reader = BufReader::new(stream);
                     for line in reader.lines() {
@@ -98,12 +98,10 @@ impl NiriBus {
 
     pub fn current_title(&self) -> String {
         let focused_id = self.focused_window_id.lock().ok().and_then(|g| *g);
-        if let Some(fid) = focused_id {
-            if let Ok(map) = self.windows_by_id.lock() {
-                if let Some(win) = map.get(&fid) {
-                    return win.title.clone();
-                }
-            }
+        if let Some(fid) = focused_id
+            && let Ok(map) = self.windows_by_id.lock()
+            && let Some(win) = map.get(&fid) {
+            return win.title.clone();
         }
         String::new()
     }
@@ -137,9 +135,8 @@ impl NiriBus {
                 if let Some(id) = obj.get("WindowClosed").and_then(|v| v.get("id")).and_then(|v| v.as_i64()) {
                     if let Ok(mut map) = self.windows_by_id.lock() { map.remove(&id); }
                     // If the closed window was focused, clear focus and broadcast
-                    if let Ok(mut f) = self.focused_window_id.lock() {
-                        if f.map(|x| x == id).unwrap_or(false) { *f = None; }
-                    }
+                    if let Ok(mut f) = self.focused_window_id.lock()
+                        && f.map(|x| x == id).unwrap_or(false) { *f = None; }
                     self.queue_broadcast_title();
                 }
             } else if obj.contains_key("WindowFocusChanged") {
@@ -162,11 +159,10 @@ impl NiriBus {
                 self.queue_broadcast_title();
             } else if obj.contains_key("WorkspaceActivated") {
                 // {"WorkspaceActivated":{"id":<workspace_id>,"focused":true}}
-                if let Some(ws_id) = obj.get("WorkspaceActivated").and_then(|v| v.get("id")).and_then(|v| v.as_i64()) {
-                    if let Ok(mut list) = self.workspaces.lock() {
-                        for w in list.iter_mut() {
-                            w.is_focused = w.id == ws_id;
-                        }
+                if let Some(ws_id) = obj.get("WorkspaceActivated").and_then(|v| v.get("id")).and_then(|v| v.as_i64())
+                    && let Ok(mut list) = self.workspaces.lock() {
+                    for w in list.iter_mut() {
+                        w.is_focused = w.id == ws_id;
                     }
                     // Title will be driven by subsequent WindowFocusChanged; nothing to do here
                 }
@@ -203,13 +199,12 @@ impl NiriBus {
         }
     }
 
-    fn ingest_windows_array(&self, arr: &Vec<JsonValue>) {
+    fn ingest_windows_array(&self, arr: &[JsonValue]) {
         if let Ok(mut map) = self.windows_by_id.lock() {
             for w in arr.iter() {
-                if let Some(o) = w.as_object() {
-                    if let (Some(id), Some(title)) = (o.get("id").and_then(|v| v.as_i64()), o.get("title").and_then(|v| v.as_str())) {
-                        map.insert(id, WindowInfo { id, title: title.to_string() });
-                    }
+                if let Some(o) = w.as_object()
+                    && let (Some(id), Some(title)) = (o.get("id").and_then(|v| v.as_i64()), o.get("title").and_then(|v| v.as_str())) {
+                    map.insert(id, WindowInfo { id, title: title.to_string() });
                 }
             }
         }
@@ -252,8 +247,12 @@ impl NiriBus {
         for (i, ws) in list.iter().enumerate() { if ws.is_focused { cur = i; break; } }
         if forward {
             if cur + 1 < list.len() { Some(list[cur+1].id) } else if wrap { Some(list[0].id) } else { None }
+        } else if cur > 0 {
+            Some(list[cur-1].id)
+        } else if wrap {
+            Some(list[list.len()-1].id)
         } else {
-            if cur > 0 { Some(list[cur-1].id) } else if wrap { Some(list[list.len()-1].id) } else { None }
+            None
         }
     }
 
@@ -263,9 +262,19 @@ impl NiriBus {
         let mut cur = 0usize;
         for (i, ws) in list.iter().enumerate() { if ws.is_focused { cur = i; break; } }
         if forward {
-            if cur + 1 < list.len() { Some(list[cur+1].idx) } else if wrap { Some(list[0].idx) } else { None }
+            if cur + 1 < list.len() {
+                Some(list[cur+1].idx)
+            } else if wrap {
+                Some(list[0].idx)
+            } else {
+                None
+            }
+        } else if cur > 0 {
+            Some(list[cur-1].idx)
+        } else if wrap {
+            Some(list[list.len()-1].idx)
         } else {
-            if cur > 0 { Some(list[cur-1].idx) } else if wrap { Some(list[list.len()-1].idx) } else { None }
+            None
         }
     }
 }

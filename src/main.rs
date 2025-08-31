@@ -1,7 +1,6 @@
 use niri_bar::application::Application;
 use niri_bar::logger::NiriBarLogger;
 use niri_bar::config::LoggingConfig;
-use gtk4;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging with default configuration

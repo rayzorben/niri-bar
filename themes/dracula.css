@@ -1,22 +1,48 @@
 /* Dracula Theme - Dark purple theme */
 
-/* Global bar styling */
+/* === Top-level elements === */
 window {
-    background-color: #ff00ff;
-    border: 2px solid #6272a4;
+    background-color: transparent;
+    border: none;
     border-radius: 0px;
     color: #f8f8f2;
     font-family: 'Sans', sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
 }
+
+/* Columns container */
+.bar-columns {
+    padding: 2px 6px;
+}
+
+/* Individual columns */
+.bar-columns > .column {
+    background-color: #282a36;
+    border: 1px solid #44475a;
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin: 0 6px;
+}
+
+/* Thin outline helper class no longer adds extra border (styling lives on columns) */
+.column-outline { border: none; padding: 0; }
+
+/* Kebab visibility by overflow policy */
+.column-kebab { opacity: 0.9; }
+.overflow-hide .column-kebab { display: none; }
+.overflow-kebab .column-kebab { display: inline; }
 
 /* Base label styling */
 label {
     color: #f8f8f2;
-    padding: 8px 16px;
+    padding: 0 6px;
     background: transparent;
 }
+
+/* Ensure columns can shrink within flex container and title has a sane minimum */
+.bar-columns > .column { min-width: 0; }
+.module-window-title { min-width: 10ch; }
 
 /* Monitor-specific styling */
 #monitor-eDP-1 label {
@@ -80,20 +106,9 @@ label {
     color: #f1fa8c;
 }
 
-/* Outline each column to visualize sections */
-.column-outline {
-    border: 1px solid rgba(255,255,255,0.8);
-    border-radius: 2px;
-    padding: 2px 4px;
-}
-
-.column-kebab { opacity: 0.9; }
-.overflow-hide .column-kebab { display: none; }
-.overflow-kebab .column-kebab { display: inline; }
-
 .module-clock {
     color: #f8f8f2;
-    padding: 0 8px;
+    padding: 0 6px;
 }
 
 /* Specific combinations */

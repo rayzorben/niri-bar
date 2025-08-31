@@ -41,7 +41,7 @@ application:
           modules: ["window_title"]
           overflow: hide
         right:
-          modules: ["clock", "battery", "system"]
+          modules: ["clock", "window_title", "clock", "clock", "battery", "system"]
           overflow: kebab
 
     # Laptop override: 5 panels (left, left-of-center, center, right-of-center, right)
@@ -81,7 +81,8 @@ application:
     - match: "^eDP-1$"
       enabled: true
 
-      layout: *layout_three
+      layout:
+        <<: *layout_three
 
       modules:
         clock:

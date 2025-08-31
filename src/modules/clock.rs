@@ -1,0 +1,43 @@
+use gtk4 as gtk;
+use gtk4::prelude::*;
+use chrono::Local;
+
+use crate::config::ModuleConfig;
+use super::BarModule;
+
+pub struct ClockModule;
+
+impl ClockModule {
+    pub const IDENT: &'static str = "bar.module.clock";
+
+    pub fn create_widget(settings: &ModuleConfig) -> gtk::Widget {
+        let default_fmt = "%a %b %d, %Y @ %I:%M:%S %p".to_string();
+        let fmt = settings.format.clone().unwrap_or(default_fmt);
+
+        let label = gtk::Label::new(None);
+        label.add_css_class("module-clock");
+
+        let now_text = Local::now().format(&fmt).to_string();
+        label.set_text(&now_text);
+
+        let label_weak = label.downgrade();
+        glib::timeout_add_seconds_local(1, move || {
+            if let Some(label) = label_weak.upgrade() {
+                let text = Local::now().format(&fmt).to_string();
+                label.set_text(&text);
+                glib::ControlFlow::Continue
+            } else {
+                glib::ControlFlow::Break
+            }
+        });
+
+        label.upcast()
+    }
+}
+
+impl BarModule for ClockModule {
+    fn id(&self) -> &'static str { Self::IDENT }
+    fn create(&self, settings: &ModuleConfig) -> gtk::Widget { Self::create_widget(settings) }
+}
+
+

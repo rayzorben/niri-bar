@@ -1,0 +1,11 @@
+---
+description: testing rules
+globs: *.*
+alwaysApply: true
+---
+1. All tests live in `tests/`.  they should not be in src/* code at all unless absolutely critical for testing.
+2. Use `cargo test -- --test-threads=1 --timeout 15s` when running manually; code must not include built-in timeouts.  
+3. Always write integration tests that simulate IPC messages (fake Niri responses).  
+4. Test coverage should be ≥80%.  
+5. CI must pass `cargo test`, `cargo check`, `cargo fmt`, and `cargo clippy`.  
+6. Use the Logger class in tests and production with rich levels: `debug`, `info`, `warn`, `error`, `trace`. All significant actions should be logged.  

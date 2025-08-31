@@ -1,0 +1,103 @@
+# Niri Bar Configuration
+# This file configures the Niri window manager status bar structure and behavior
+# 
+application:
+  # Theme configuration
+  theme: "solarized"  # Options: wombat, solarized, dracula
+
+  # ---- GLOBAL *MODULE DEFAULTS ----
+  modules:
+    clock: &clock_default
+      format: "%a %b %d, %Y @ %H:%M:%S"
+      tooltip: true
+
+    workspaces: &workspaces_default
+      highlight_active: true
+      show_numbers: true
+
+    window_title: &window_title_default
+      max_length: 80
+      ellipsize: "end"
+
+    battery: &battery_default
+      show_percentage: true
+      warn_threshold: 20
+      critical_threshold: 10
+
+    system: &system_default
+      cpu: true
+      mem: true
+      net: true
+
+  # ---- LAYOUT PROFILES ----
+  layouts:
+    # Default everywhere: simple 3 columns
+    three_column: &layout_three
+      columns:
+        left:
+          modules: ["workspaces"]
+          overflow: hide
+        center:
+          modules: ["window_title"]
+          overflow: hide
+        right:
+          modules: ["clock", "battery", "system"]
+          overflow: kebab
+
+    # Laptop override: 5 panels (left, left-of-center, center, right-of-center, right)
+    five_panel: &layout_five
+      columns:
+        left:
+          modules: ["workspaces"]
+          overflow: hide
+        left-of-center:
+          modules: ["window_title"]
+          overflow: hide
+        center:
+          modules: []
+          overflow: hide
+        right-of-center:
+          modules: ["clock"]
+          overflow: hide
+        right:
+          modules: ["battery", "system"]
+          overflow: kebab
+
+  # ---- MONITOR CONFIG ----
+  monitors:
+    # Global baseline: 3-column layout on all monitors
+    - match: ".*"
+      enabled: true
+
+      layout: *layout_three
+
+      modules:
+        clock:        { <<: *clock_default }
+        workspaces:   { <<: *workspaces_default }
+        window_title: { <<: *window_title_default }
+        battery:      { <<: *battery_default }
+        system:       { <<: *system_default }
+
+    - match: "^eDP-1$"
+      enabled: true
+
+      layout: *layout_three
+
+      modules:
+        clock:
+          <<: *clock_default
+          format: "%a %b %d, %Y @ %I:%M:%S %p"  # per-monitor override (shorter format)
+
+    # Example: disable all other DP heads (optional)
+    - match: "^DP-.*$"
+      enabled: false
+
+# Logging configuration
+logging:
+  level: "debug"  # debug, info, warn, error
+  file: "~/.local/share/niri-bar/niri-bar.log"
+  console: true
+  format: "iso8601"  # iso8601, simple
+  include_file: true
+  include_line: true
+  include_class: true

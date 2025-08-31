@@ -1,0 +1,27 @@
+---
+description: best practices for this project
+globs: *.*
+alwaysApply: true
+---
+- Always use classes except for the entry point (main.rs).
+- All unit tests go in `tests/` (never inline in source files).  
+   - Run `cargo test` after every change.  
+   - `cargo build` should not include tests.  
+   - Every time you think “let’s add/update unit tests,” do it.  
+- Config-first design: nothing is hardcoded. Every behavior and style is controlled via YAML or CSS.  
+- Wayland only. No X11 support.  
+- Linux only. No Windows/macOS support.  
+- Niri WM only. Don’t implement fallbacks for other WMs.  
+- Prefer real-time event driven code. Polling is only allowed when no alternative exists.  
+- Code reuse is mandatory: never reimplement the same logic twice. Factor shared code into helpers.  
+- Zero warnings policy: `cargo clippy -- -D warnings` must pass.  
+- Project documentation should now live in wiki format under wiki/ folder with detailed explanations about all of the functionality and how it works and the decisions and choices made for the code bae.
+- The README.md should now detail the user specific stuff. How to compile, how to run, how to modify the YAML, the CSS, theme support, different modules and their options.
+- Always check the web for the latest stable crates and APIs. Don’t use abandoned or outdated crates.  
+- Output/log messages must use a playful 1990s high-school slang style.  
+- Baby steps: only implement exactly what’s requested. Don’t speculate or overbuild.  
+- Remove all dead code as soon as it’s not used.  
+15. Never use `unwrap()` or `expect()` in production code. Always handle errors via `Result<T,E>`.  
+- All IPC message formats must be defined in a single schema module and unit tested (serialize + parse).  
+- Async discipline: never block the event loop. No `thread::sleep`, no sync file I/O in hot paths.  
+- One class per file unless it is used only as a supporting class for the class that is exported and used elsewhere.

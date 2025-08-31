@@ -1,0 +1,8 @@
+---
+description: how modules work
+globs: *.*
+alwaysApply: true
+---
+- modules are handled dynamically, which means they are classes and use a registry that can be used to identifiy the module like bar.module.clock
+- modules should all run their own code to make them work and not rely on any of the main bar functionality unless necessary. e.g.; if one fails it should not affect any others
+- modules will all still have their own css and yaml config though

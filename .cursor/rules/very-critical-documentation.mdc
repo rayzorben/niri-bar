@@ -1,0 +1,9 @@
+---
+description: document everything
+globs: *.*
+alwaysApply: true
+---
+- be excessive in comments but not per line, in goals, methodology
+- README.md should be USER specific on how to configure and run this
+- create a new wiki/ folder with documentation on the actual project, apis, goals, decisions, how it works, etc.
+- at the top of README.md lets detail how this is a Cursor AI based project and the author doesn't know rust, although he has a wide background in C, C++, Pascal, Perl, Python, Javascript, C#, and X++. The goal of this project is to use Rust but not write a single line of code.

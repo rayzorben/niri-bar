@@ -1,0 +1,13 @@
+---
+description: ui suggestions
+globs: *.*
+alwaysApply: true
+---
+1. Use modern libraries like `gtk4-layer-shell`.  
+2. The bar must be pixel-perfect and responsive. No hardcoded x/y positions unless unavoidable — use anchors.  
+3. All layout and styling is defined in CSS, not YAML or code.  
+4. Changes (workspaces, titles, clock, etc.) must not shift or break other components. Layout remains stable.  
+5. When a monitor connects/disconnects or resolution changes, the bar reprocesses and updates seamlessly.  
+6. All UI should be accessible: adequate contrast, readable font sizes, no clipping or overlap.  
+7. Animations or transitions must be defined in CSS only. Never hardcode animations in Rust.  
+8. add relevant class/id tags to every ui element rendered - per monitor/bar, per column, per module. The idea is that i can apply a style specifically to say the clock module in the left-of-center section on monitor DP-3 but not others.

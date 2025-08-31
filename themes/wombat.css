@@ -1,0 +1,154 @@
+/* Wombat Theme - Warm dark theme with brown/orange accents */
+
+/* Global bar styling */
+window {
+    background-color: #242424;
+    border: 2px solid #8f8f8f;
+    border-radius: 0px;
+    color: #f6f3e8;
+    font-family: 'Sans', sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Base label styling */
+label {
+    color: #f6f3e8;
+    padding: 8px 16px;
+    background: transparent;
+}
+
+/* Monitor-specific styling */
+#monitor-eDP-1 label {
+    color: #f6f3e8;
+}
+
+#monitor-DP-1 label {
+    color: #f6f3e8;
+}
+
+#monitor-DP-2 label {
+    color: #f6f3e8;
+}
+
+#monitor-DP-3 label {
+    color: #f6f3e8;
+}
+
+/* Column-specific styling */
+#column-left label {
+    color: #cae682;
+}
+
+#column-center label {
+    color: #f6f3e8;
+}
+
+#column-right label {
+    color: #e5786d;
+}
+
+#column-left-of-center label {
+    color: #b4d273;
+}
+
+#column-right-of-center label {
+    color: #e5786d;
+}
+
+/* Module-specific styling */
+#module-workspaces label {
+    color: #cae682;
+    font-weight: bold;
+}
+
+#module-window_title label {
+    color: #f6f3e8;
+    font-style: italic;
+}
+
+#module-clock label {
+    color: #e5786d;
+    font-weight: bold;
+}
+
+#module-battery label {
+    color: #8ac6f2;
+}
+
+#module-system label {
+    color: #f4bf75;
+}
+
+/* Outline each column to visualize sections while labels are removed */
+.column-outline {
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 2px;
+    padding: 2px 4px;
+}
+
+/* Kebab visibility by overflow policy */
+.column-kebab { opacity: 0.9; }
+.overflow-hide .column-kebab { display: none; }
+.overflow-kebab .column-kebab { display: inline; }
+
+.module-clock {
+    color: #ffffff;
+    padding: 0 8px;
+}
+
+/* Specific combinations */
+#monitor-eDP-1 #column-left #module-workspaces label {
+    color: #cae682;
+}
+
+#monitor-eDP-1 #column-left-of-center #module-window_title label {
+    color: #b4d273;
+}
+
+#monitor-eDP-1 #column-right-of-center #module-clock label {
+    color: #e5786d;
+}
+
+#monitor-eDP-1 #column-right #module-system label {
+    color: #f4bf75;
+}
+
+/* Hover effects */
+label:hover {
+    background-color: #3a3a3a;
+    border-radius: 4px;
+}
+
+/* Active/selected states */
+#module-workspaces label.active {
+    background-color: #cae682;
+    color: #242424;
+    border-radius: 4px;
+}
+
+#module-battery label.warning {
+    color: #f4bf75;
+}
+
+#module-battery label.critical {
+    color: #e5786d;
+    font-weight: bold;
+}
+/* Test CSS change */
+/* Workspaces module styling */
+.module-workspaces { gap: 6px; }
+.workspace-pill {
+    padding: 2px 10px;
+    border-radius: 5px;
+    background: #3a3a3a;
+    color: #ffffff;
+    transition: transform 250ms ease, background-color 150ms ease;
+}
+.workspace-pill:hover { background: #4a4a4a; }
+.workspace-pill.active {
+    background: #ffcc66;
+    color: #1b1b1b;
+    transform: scale(1.08);
+}
+.workspace-pill.pulse { transform: scale(1.15); }

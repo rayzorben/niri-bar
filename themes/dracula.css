@@ -1,0 +1,153 @@
+/* Dracula Theme - Dark purple theme */
+
+/* Global bar styling */
+window {
+    background-color: #ff00ff;
+    border: 2px solid #6272a4;
+    border-radius: 0px;
+    color: #f8f8f2;
+    font-family: 'Sans', sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Base label styling */
+label {
+    color: #f8f8f2;
+    padding: 8px 16px;
+    background: transparent;
+}
+
+/* Monitor-specific styling */
+#monitor-eDP-1 label {
+    color: #f8f8f2;
+}
+
+#monitor-DP-1 label {
+    color: #f8f8f2;
+}
+
+#monitor-DP-2 label {
+    color: #f8f8f2;
+}
+
+#monitor-DP-3 label {
+    color: #f8f8f2;
+}
+
+/* Column-specific styling */
+#column-left label {
+    color: #50fa7b;
+}
+
+#column-center label {
+    color: #f8f8f2;
+}
+
+#column-right label {
+    color: #ff5555;
+}
+
+#column-left-of-center label {
+    color: #50fa7b;
+}
+
+#column-right-of-center label {
+    color: #ff5555;
+}
+
+/* Module-specific styling */
+#module-workspaces label {
+    color: #50fa7b;
+    font-weight: bold;
+}
+
+#module-window_title label {
+    color: #f8f8f2;
+    font-style: italic;
+}
+
+#module-clock label {
+    color: #ff5555;
+    font-weight: bold;
+}
+
+#module-battery label {
+    color: #8be9fd;
+}
+
+#module-system label {
+    color: #f1fa8c;
+}
+
+/* Outline each column to visualize sections */
+.column-outline {
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 2px;
+    padding: 2px 4px;
+}
+
+.column-kebab { opacity: 0.9; }
+.overflow-hide .column-kebab { display: none; }
+.overflow-kebab .column-kebab { display: inline; }
+
+.module-clock {
+    color: #f8f8f2;
+    padding: 0 8px;
+}
+
+/* Specific combinations */
+#monitor-eDP-1 #column-left #module-workspaces label {
+    color: #50fa7b;
+}
+
+#monitor-eDP-1 #column-left-of-center #module-window_title label {
+    color: #50fa7b;
+}
+
+#monitor-eDP-1 #column-right-of-center #module-clock label {
+    color: #ff5555;
+}
+
+#monitor-eDP-1 #column-right #module-system label {
+    color: #f1fa8c;
+}
+
+/* Hover effects */
+label:hover {
+    background-color: #44475a;
+    border-radius: 4px;
+}
+
+/* Active/selected states */
+#module-workspaces label.active {
+    background-color: #50fa7b;
+    color: #282a36;
+    border-radius: 4px;
+}
+
+#module-battery label.warning {
+    color: #f1fa8c;
+}
+
+#module-battery label.critical {
+    color: #ff5555;
+    font-weight: bold;
+}
+
+/* Workspaces module styling */
+.module-workspaces { gap: 6px; }
+.workspace-pill {
+    padding: 2px 10px;
+    border-radius: 5px;
+    background: #44475a;
+    color: #f8f8f2;
+    transition: transform 250ms ease, background-color 150ms ease;
+}
+.workspace-pill:hover { background: #5b5f73; }
+.workspace-pill.active {
+    background: #bd93f9;
+    color: #282a36;
+    transform: scale(1.08);
+}
+.workspace-pill.pulse { transform: scale(1.15); }

@@ -1,0 +1,17 @@
+---
+description: for niri-bar.yaml stuff
+globs: *.*
+alwaysApply: true
+---
+- Define global module defaults once, and reuse everywhere.
+- Support reusable named layouts that describe column → modules mapping.
+- Allow arbitrary column names (renderer uses column count/order, not names).
+- Per-monitor configs can override layout choice and module settings.
+- Keep configs DRY: use YAML merge/inheritance for overrides instead of duplication.
+- Config options always have safe, minimal defaults. Never surprise the user.  
+- Config must validate against a JSON Schema before use. Invalid config = error + log message.  
+- Config changes should be hot-reloadable without restarting the bar whenever possible.  
+- Should be validated against src/niri-bar-yaml.schema.json and this schema should be updated if yaml is changed.
+- As part of unit testing, schema validation should always be done fixed if it doesn't validate.
+- Do not hard code yaml in testing, the yaml file itsself should always be used.
+- Test cases should not rely on specific monitors being available. eDP-1 is not available on a desktop. A laptop may or may not have DP-1 connected.

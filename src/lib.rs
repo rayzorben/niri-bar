@@ -1,0 +1,9 @@
+pub mod file_watcher;
+pub mod config;
+pub mod ui;
+pub mod logger;
+pub mod application;
+pub mod monitor;
+pub mod bar;
+pub mod modules;
+pub mod niri;

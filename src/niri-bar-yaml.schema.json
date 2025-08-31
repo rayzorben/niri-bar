@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Niri Bar Configuration Schema",
+  "description": "Schema for Niri Bar YAML configuration file with YAML anchors and layout profiles",
+  "type": "object",
+  "properties": {
+    "application": {
+      "type": "object",
+      "description": "Application-level configuration with YAML anchors",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": ["wombat", "solarized", "dracula"],
+          "default": "wombat",
+          "description": "CSS theme to use for styling the bar"
+        },
+        "modules": {
+          "type": "object",
+          "description": "Global module defaults (YAML anchors)",
+          "additionalProperties": {
+            "$ref": "#/definitions/ModuleConfig"
+          }
+        },
+        "layouts": {
+          "type": "object",
+          "description": "Reusable layout profiles (YAML anchors)",
+          "additionalProperties": {
+            "$ref": "#/definitions/LayoutConfig"
+          }
+        },
+        "monitors": {
+          "type": "array",
+          "description": "Monitor configurations with pattern matching",
+          "items": {
+            "$ref": "#/definitions/MonitorConfig"
+          }
+        }
+      },
+      "required": ["modules", "layouts", "monitors"],
+      "additionalProperties": false
+    },
+    "logging": {
+      "$ref": "#/definitions/LoggingConfig"
+    }
+  },
+  "required": ["application", "logging"],
+  "definitions": {
+    "ModuleConfig": {
+      "type": "object",
+      "description": "Module configuration with YAML anchor support",
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "Time format string (for clock module)"
+        },
+        "date_format": {
+          "type": ["string", "null"],
+          "description": "Deprecated: use 'format' only",
+          "deprecated": true
+        },
+        "tooltip": {
+          "type": "boolean",
+          "description": "Show tooltip on hover"
+        },
+        "highlight_active": {
+          "type": "boolean",
+          "description": "Highlight active workspace (for workspaces module)"
+        },
+        "show_numbers": {
+          "type": "boolean",
+          "description": "Show workspace numbers (for workspaces module)"
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum length for text (for window_title module)"
+        },
+        "ellipsize": {
+          "type": "string",
+          "enum": ["start", "middle", "end"],
+          "description": "Text ellipsis position"
+        },
+        "show_percentage": {
+          "type": "boolean",
+          "description": "Show percentage (for battery module)"
+        },
+        "warn_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Warning threshold percentage (for battery module)"
+        },
+        "critical_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Critical threshold percentage (for battery module)"
+        },
+        "cpu": {
+          "type": "boolean",
+          "description": "Show CPU usage (for system module)"
+        },
+        "mem": {
+          "type": "boolean",
+          "description": "Show memory usage (for system module)"
+        },
+        "net": {
+          "type": "boolean",
+          "description": "Show network usage (for system module)"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable module"
+        }
+      },
+      "additionalProperties": true
+    },
+    "LayoutConfig": {
+      "type": "object",
+      "description": "Layout configuration with column mapping",
+      "properties": {
+        "columns": {
+          "type": "object",
+          "description": "Column mapping with per-column spec",
+          "additionalProperties": {
+            "$ref": "#/definitions/ColumnSpec"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ColumnSpec": {
+      "type": "object",
+      "description": "Per-column modules and overflow policy",
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "overflow": {
+          "type": "string",
+          "enum": ["hide", "kebab", "crop"],
+          "default": "hide",
+          "description": "Overflow policy (crop alias accepted for hide)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MonitorConfig": {
+      "type": "object",
+      "description": "Monitor configuration with layout and module overrides",
+      "properties": {
+        "match": {
+          "type": "string",
+          "description": "Regex pattern to match monitor names"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable this monitor"
+        },
+        "layout": {
+          "$ref": "#/definitions/LayoutConfig",
+          "description": "Layout configuration for this monitor"
+        },
+        "modules": {
+          "type": "object",
+          "description": "Module configuration overrides for this monitor",
+          "additionalProperties": {
+            "$ref": "#/definitions/ModuleConfig"
+          }
+        }
+      },
+      "required": ["match"],
+      "additionalProperties": false
+    },
+    "LoggingConfig": {
+      "type": "object",
+      "description": "Logging configuration",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Logging level"
+        },
+        "file": {
+          "type": "string",
+          "description": "Log file path"
+        },
+        "console": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable console logging"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["iso8601", "simple"],
+          "default": "iso8601",
+          "description": "Log format"
+        },
+        "include_file": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include file name in log messages"
+        },
+        "include_line": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include line number in log messages"
+        },
+        "include_class": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include class name in log messages"
+        }
+      },
+      "required": ["level", "file", "console"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

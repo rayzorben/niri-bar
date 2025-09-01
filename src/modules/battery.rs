@@ -130,6 +130,7 @@ impl BatteryModule {
 
         // Determine sysfs paths (case-insensitive bat0/BAT0, and fallback scan)
         let resolved = resolve_battery_device(&device);
+        log::info!("Battery device resolved to: {:?}", resolved);
         let cap_path = resolved.join("capacity");
         let stat_path = resolved.join("status");
 
@@ -141,14 +142,18 @@ impl BatteryModule {
         for p in [&cap_path, &stat_path] {
             let file = gio::File::for_path(p);
             if let Ok(mon) = file.monitor_file(gio::FileMonitorFlags::NONE, None::<&gio::Cancellable>) {
+                log::info!("Monitoring battery file: {:?}", p);
                 let lbl = label.clone();
                 let cap_p = cap_path.clone();
                 let stat_p = stat_path.clone();
                 let opts_c = opts.clone();
                 mon.connect_changed(move |_, _file, _other, _event| {
+                    log::info!("Battery file changed: {:?}", _event);
                     update_battery_label(&lbl, &cap_p, &stat_p, &opts_c);
                 });
                 monitors.push(mon);
+            } else {
+                log::warn!("Failed to monitor battery file: {:?}", p);
             }
         }
         // keep monitors alive by attaching to widget data (unsafe per GTK API contract)
@@ -156,7 +161,19 @@ impl BatteryModule {
             root.set_data("battery_file_monitors", monitors);
         }
 
-        // No polling; updates come from file monitors above
+        // Fallback polling every 5 seconds (event-driven not reliable on sysfs)
+        let label_weak = label.downgrade();
+        let cap_path_clone = cap_path.clone();
+        let stat_path_clone = stat_path.clone();
+        let opts_clone = opts.clone();
+        glib::timeout_add_local(std::time::Duration::from_secs(5), move || {
+            if let Some(lbl) = label_weak.upgrade() {
+                update_battery_label(&lbl, &cap_path_clone, &stat_path_clone, &opts_clone);
+                glib::ControlFlow::Continue
+            } else {
+                glib::ControlFlow::Break
+            }
+        });
 
         root.upcast()
     }
@@ -224,6 +241,7 @@ fn update_battery_label(
     } else { String::new() };
 
     let txt = if opts.show_percentage { format!("{} {}%", icon, p) } else { icon };
+    log::debug!("Battery update: {}%, status: {:?}, text: {}", p, stat, txt);
     label.set_text(&txt);
 
     // Set classes for colorization
@@ -240,7 +258,7 @@ fn update_battery_label(
         if should_pulse {
             label.add_css_class("pulse");
             let label_weak = label.downgrade();
-            glib::timeout_add_local(std::time::Duration::from_millis(260), move || {
+            glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
                 if let Some(lbl) = label_weak.upgrade() { lbl.remove_css_class("pulse"); }
                 glib::ControlFlow::Break
             });

@@ -119,7 +119,7 @@ application:
             align: "center"
             # width: 400
           right:
-            modules: ["clock"]
+            modules: ["battery", "clock"]
             overflow: hide
             gap: 6
             align: "right"

@@ -94,6 +94,7 @@ impl WorkspacesModule {
             let label_text = if show_numbers {
                 format!("{}", ws.idx)
             } else {
+                // If numbers are hidden, prefer the workspace name, fallback to number only if missing
                 ws.name.clone().unwrap_or_else(|| format!("{}", ws.idx))
             };
             let btn = gtk::Button::with_label(&label_text);

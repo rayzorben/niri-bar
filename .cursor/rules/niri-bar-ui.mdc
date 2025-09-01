@@ -11,3 +11,4 @@ alwaysApply: true
 6. All UI should be accessible: adequate contrast, readable font sizes, no clipping or overlap.  
 7. Animations or transitions must be defined in CSS only. Never hardcode animations in Rust.  
 8. add relevant class/id tags to every ui element rendered - per monitor/bar, per column, per module. The idea is that i can apply a style specifically to say the clock module in the left-of-center section on monitor DP-3 but not others.
+9. the UI should be responsive! that means when clicking there should be a visual indication, or when any action is done there should be a visual indication of some sort so the user feels like it was performed.

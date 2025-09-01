@@ -292,7 +292,7 @@ impl Bar {
             let effective_align: TextAlign = spec
                 .align
                 .clone()
-                .unwrap_or_else(|| match name.as_str() {
+                .unwrap_or(match name.as_str() {
                     "center" => TextAlign::Center,
                     "right" => TextAlign::Right,
                     _ => TextAlign::Left,
@@ -311,30 +311,29 @@ impl Bar {
                 let module_config = module_configs.get(module);
 
                 // Check display property - skip hidden modules
-                if let Some(config) = module_config {
-                    if matches!(config.display.as_ref().unwrap_or(&DisplayMode::Show), DisplayMode::Hide) {
-                        continue;
-                    }
+                if let Some(config) = module_config
+                    && matches!(config.display.as_ref().unwrap_or(&DisplayMode::Show), DisplayMode::Hide) {
+                    continue;
                 }
 
                 // Merge module settings from provided format map into a minimal settings struct
                 let settings = crate::config::ModuleConfig {
                     format: module_formats.get(module).cloned(),
-                    tooltip: None,
-                    highlight_active: None,
-                    show_numbers: None,
-                    max_length: None,
-                    ellipsize: None,
-                    show_percentage: None,
-                    warn_threshold: None,
-                    critical_threshold: None,
-                    cpu: None,
-                    mem: None,
-                    net: None,
-                    enabled: None,
+                    tooltip: module_config.and_then(|c| c.tooltip),
+                    highlight_active: module_config.and_then(|c| c.highlight_active),
+                    show_numbers: module_config.and_then(|c| c.show_numbers),
+                    max_length: module_config.and_then(|c| c.max_length),
+                    ellipsize: module_config.and_then(|c| c.ellipsize.clone()),
+                    show_percentage: module_config.and_then(|c| c.show_percentage),
+                    warn_threshold: module_config.and_then(|c| c.warn_threshold),
+                    critical_threshold: module_config.and_then(|c| c.critical_threshold),
+                    cpu: module_config.and_then(|c| c.cpu),
+                    mem: module_config.and_then(|c| c.mem),
+                    net: module_config.and_then(|c| c.net),
+                    enabled: module_config.and_then(|c| c.enabled),
                     align: module_config.and_then(|c| c.align.clone()),
                     display: module_config.and_then(|c| c.display.clone()),
-                    additional: std::collections::HashMap::new(),
+                    additional: module_config.map(|c| c.additional.clone()).unwrap_or_default(),
                 };
 
                 if let Some(widget) = create_module_widget(module, &settings) {
@@ -379,8 +378,20 @@ impl Bar {
                 }
             }
 
+            // Optionally insert spacers to realize column-level grouping alignment
+            if matches!(effective_align, TextAlign::Right) {
+                let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+                spacer.set_hexpand(true);
+                column_box.append(&spacer);
+            }
+            if matches!(effective_align, TextAlign::Center) {
+                let spacer_left = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+                spacer_left.set_hexpand(true);
+                column_box.append(&spacer_left);
+            }
+
             // Append widgets that fit, setting alignment based on column alignment
-            for (i, w) in module_widgets.iter().enumerate() {
+            for w in module_widgets.iter() {
                 if !overflowed.iter().any(|ow| ow == w) {
                     // GTK4 CSS doesn't support text-align, so set alignment programmatically
                     if let Some(label) = w.downcast_ref::<gtk::Label>() {
@@ -399,11 +410,17 @@ impl Bar {
                             TextAlign::Right => gtk::Justification::Right,
                         });
                     }
-                    // Ensure child expands to column width so alignment is visible
-                    w.set_hexpand(true);
+                    // For grouped alignment, don't force children to expand; let spacers handle layout
+                    w.set_hexpand(false);
                     w.set_halign(gtk::Align::Fill);
                     column_box.append(w);
                 }
+            }
+
+            if matches!(effective_align, TextAlign::Center) {
+                let spacer_right = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+                spacer_right.set_hexpand(true);
+                column_box.append(&spacer_right);
             }
 
             // Move overflowed widgets into popover as rows

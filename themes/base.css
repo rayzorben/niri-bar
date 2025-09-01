@@ -84,13 +84,14 @@ window {
 
     /* Layout properties */
     min-width: 0;
-    /* Force the column to visibly fill its allotted equal width */
-    width: 100%;
+    /* GTK doesn't support CSS width for layout here; width is managed in Rust */
 }
 
 /* Column position indicators - themed border colors */
+/* Hide left and right column borders and backgrounds */
 .bar-columns > .column-left {
-    border-color: var(--column-left-border, #ff6b35);
+    border: none;
+    background-color: transparent;
 }
 
 .bar-columns > .column-center {
@@ -98,7 +99,8 @@ window {
 }
 
 .bar-columns > .column-right {
-    border-color: var(--column-right-border, #45b7d1);
+    border: none;
+    background-color: transparent;
 }
 
 /* ===== COLUMN SIZE CONTROL ===== */
@@ -176,13 +178,49 @@ label {
     color: var(--module-battery);
 }
 
+/* Battery states */
+.battery-label.battery-ok { color: var(--battery-ok, #78d64b); }
+.battery-label.battery-warn { color: var(--battery-warn, #ffcc00); }
+.battery-label.battery-crit { color: var(--battery-crit, #ff5050); }
+.battery-label.pulse { animation: battery-pulse 0.26s ease-in-out; }
+
+/* Battery button look */
+.module-battery {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--column-bg);
+  color: var(--text-primary);
+}
+
+/* Battery popover follows theme */
+.battery-popover, .battery-popover-list, .battery-popover-list row, .battery-popover-list row label {
+  background: var(--column-bg);
+  color: var(--text-primary);
+}
+.battery-popover-list row.active label {
+  font-weight: bold;
+  color: var(--active-text);
+  background: var(--active-bg);
+  border-radius: 4px;
+}
+
+@keyframes battery-pulse {
+  0% { transform: scale(1.0); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1.0); }
+}
+
 #module-system label {
     color: var(--module-system);
 }
 
 .module-clock {
     color: var(--text-primary);
-    padding: 0 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 2px 6px;
+    background: var(--column-bg);
 }
 
 /* ===== SPECIFIC MONITOR-MODULE COMBINATIONS ===== */

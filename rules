@@ -1,0 +1,7 @@
+1. Read the rules
+2. Re-read the rules
+3. Make the following iteration/adjustment below.
+4. After re-read the rules again.
+5. Make sure you are running cargo build, cargo test and cargo clippy with no warnings EVERY TIME.
+
+

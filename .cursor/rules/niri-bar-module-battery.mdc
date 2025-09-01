@@ -1,0 +1,18 @@
+---
+description: rules for battery module
+globs: *.*
+alwaysApply: true
+---
+The battery module should default to bat0
+It should have a config option in yaml to override that
+This should work on any distribution so keep it as agnostic as possible
+If there is a way to use events use them, dont poll. 
+It should show an Icon (optional in yaml) a battery percentage (optional in yaml). The icon should scale with the percentage, so 100% it is full, 80% not full, 50% half full, 30% almost empty, etc..
+Default color should be a pleasant green if, say, 40% to 100%, yellow if 10% to 40% and red 0 - 10%
+All of those percentages should be configurable in yaml (and colors in css)
+Once it gets to 'yellow' it should pulse once every 5%
+Once it gets to 'red' it should pulse once every 1%
+Pulse should be an option true/false
+The icon should reflect charging when charging with the lightning battery icon
+It should (via css) have a border around it like a button.
+Clicking the button should dropdown and (using themes for dropdown) allow the user to select the power profile (Performance, Balanced, Power Saver) using automatic detections of whatever is typically used for setting the power profile, or no dropdown if nothing detected.

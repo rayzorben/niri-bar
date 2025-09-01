@@ -31,6 +31,11 @@
     --column-center-border: #bd93f9;    /* Purple for center */
     --column-right-border: #ff5555;     /* Red for right */
 
+    /* Battery thresholds */
+    --battery-ok: #50fa7b;
+    --battery-warn: #f1fa8c;
+    --battery-crit: #ff5555;
+
     /* Module colors */
     --module-workspaces: #50fa7b;
     --module-window-title: #f8f8f2;

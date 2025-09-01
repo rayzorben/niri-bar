@@ -31,6 +31,11 @@
     --column-center-border: #f6f3e8;    /* Light for center */
     --column-right-border: #e5786d;     /* Red for right */
 
+    /* Battery thresholds (colors can be themed) */
+    --battery-ok: #78d64b;
+    --battery-warn: #ffcc00;
+    --battery-crit: #ff5050;
+
     /* Module colors */
     --module-workspaces: #cae682;
     --module-window-title: #f6f3e8;

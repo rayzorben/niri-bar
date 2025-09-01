@@ -193,6 +193,11 @@ label {
   color: var(--text-primary);
 }
 
+.battery-icon {
+  /* ensure icons follow text color */
+  color: var(--text-primary);
+}
+
 /* Battery popover follows theme */
 .battery-popover, .battery-popover-list, .battery-popover-list row, .battery-popover-list row label {
   background: var(--column-bg);
@@ -221,6 +226,13 @@ label {
     border-radius: 4px;
     padding: 2px 6px;
     background: var(--column-bg);
+}
+
+.module-tray {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--column-bg);
 }
 
 /* ===== SPECIFIC MONITOR-MODULE COMBINATIONS ===== */

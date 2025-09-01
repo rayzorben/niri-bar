@@ -18,21 +18,22 @@ application:
     window_title: &window_title_default
       max_length: 80
       ellipsize: "end"
-      align: "center"  # left, center, right
       display: "show"  # show, hide
 
     battery: &battery_default
       show_percentage: true
       warn_threshold: 20
       critical_threshold: 10
-      align: "left"    # left, center, right
       display: "show"  # show, hide
+
+    tray: &tray_default
+      align: "right"
+      display: "show"
 
     system: &system_default
       cpu: true
       mem: true
       net: true
-      align: "left"    # left, center, right
       display: "show"  # show, hide
 
   # ---- LAYOUT PROFILES ----
@@ -51,7 +52,7 @@ application:
           gap: 6
           align: "center"  # Center column centers its contents
         right: &col_right
-          modules: [ "clock" ]
+          modules: [ "tray", "clock", "battery" ]
           overflow: kebab
           gap: 8         # Slightly more spacing for crowded right column
           align: "right"
@@ -98,6 +99,7 @@ application:
         workspaces:   { <<: *workspaces_default }
         window_title: { <<: *window_title_default }
         battery:      { <<: *battery_default }
+        tray:         { <<: *tray_default }
         system:       { <<: *system_default }
 
     - match: "^eDP-1$"
@@ -129,11 +131,9 @@ application:
         clock:
           <<: *clock_default
           format: "%a %b %d, %Y @ %I:%M:%S %p"  # per-monitor override (shorter format)
-          align: "center"  # Center clock on laptop
         window_title:
           <<: *window_title_default
           display: "show"  # Ensure visible on laptop
-          align: "center"  # Center title on laptop
 
     # Example: disable all other DP heads (optional)
     - match: "^DP-.*$"

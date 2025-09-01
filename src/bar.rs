@@ -331,7 +331,6 @@ impl Bar {
                     mem: module_config.and_then(|c| c.mem),
                     net: module_config.and_then(|c| c.net),
                     enabled: module_config.and_then(|c| c.enabled),
-                    align: module_config.and_then(|c| c.align.clone()),
                     display: module_config.and_then(|c| c.display.clone()),
                     additional: module_config.map(|c| c.additional.clone()).unwrap_or_default(),
                 };

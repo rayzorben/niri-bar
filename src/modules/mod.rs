@@ -6,6 +6,7 @@ pub mod clock;
 pub mod window_title;
 pub mod workspaces;
 pub mod battery;
+pub mod tray;
 
 /// Trait for all modules. Each module exposes an identifier and can create its widget.
 pub trait BarModule: Send + Sync {
@@ -24,6 +25,7 @@ static REGISTRY: Lazy<HashMap<&'static str, FactoryFn>> = Lazy::new(|| {
     m.insert(window_title::WindowTitleModule::IDENT, window_title::WindowTitleModule::create_widget);
     m.insert(workspaces::WorkspacesModule::IDENT, workspaces::WorkspacesModule::create_widget);
     m.insert(battery::BatteryModule::IDENT, battery::BatteryModule::create_widget);
+    m.insert(tray::TrayModule::IDENT, tray::TrayModule::create_widget);
     m
 });
 

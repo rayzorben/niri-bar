@@ -49,12 +49,19 @@ impl BatteryModule {
         root.add_css_class("module-battery");
         root.set_has_frame(true);
 
-        // Label inside (text and optional icon via Unicode)
+        // Content: icon (SVG via themed symbolic icon) + optional percentage label
+        let content = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        let image = gtk::Image::new();
+        image.add_css_class("battery-icon");
+        image.set_pixel_size(16);
+        content.append(&image);
+
         let label = gtk::Label::new(None);
         label.add_css_class("battery-label");
         label.set_hexpand(true);
         label.set_halign(gtk::Align::Fill);
-        root.set_child(Some(&label));
+        content.append(&label);
+        root.set_child(Some(&content));
 
         // Popover for power profiles if available
         let popover = gtk::Popover::new();
@@ -75,7 +82,10 @@ impl BatteryModule {
             // Handle row activation for setting profiles
             let pop_for_cb = popover.clone();
             let list_for_cb = list.clone();
-            let ppd_for_cb = ppd_path.as_ref().unwrap().clone();
+            let Some(ppd_for_cb) = ppd_path.clone() else {
+                log::warn!("Yo, 'powerprofilesctl' path vanished, tray's feeling ghosted 🧟");
+                return root.upcast();
+            };
             list.connect_row_activated(move |_, row| {
                 // Get profile from row data
                 let profile_nn = unsafe { row.data::<String>("profile") };
@@ -87,11 +97,17 @@ impl BatteryModule {
                         Ok(mut c) => {
                             let p_clone = p.clone();
                             std::thread::spawn(move || {
-                                let status = c.wait().unwrap();
-                                if status.success() {
-                                    log::info!("Yo dude, power profile set to {} like a boss! 🔋⚡", p_clone);
-                                } else {
-                                    log::error!("Bummer, failed to set power profile to {} - check permissions or polkit! 😞", p_clone);
+                                match c.wait() {
+                                    Ok(status) => {
+                                        if status.success() {
+                                            log::info!("Yo dude, power profile set to {} like a boss! 🔋⚡", p_clone);
+                                        } else {
+                                            log::error!("Bummer, failed to set power profile to {} - check permissions or polkit! 😞", p_clone);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        log::error!("Whoa, waiting on powerprofilesctl borked: {}", e);
+                                    }
                                 }
                             });
                         }
@@ -118,12 +134,15 @@ impl BatteryModule {
                 if pop.is_visible() { pop.popdown(); } else { pop.popup(); }
             });
             // Poll power profile every 2 seconds for real-time updates (event-driven alternative not available)
-            let list_poll = list.clone();
-            let ppd_poll = ppd_path.as_ref().unwrap().clone();
-            glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-                rebuild_power_profile_list(&list_poll, &ppd_poll, None);
-                glib::ControlFlow::Continue
-            });
+            if let Some(ppd_poll) = ppd_path.clone() {
+                let list_poll = list.clone();
+                glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
+                    rebuild_power_profile_list(&list_poll, &ppd_poll, None);
+                    glib::ControlFlow::Continue
+                });
+            } else {
+                log::warn!("Nope, can't poll power profile — command path missing");
+            }
         } else {
             // no menu shown
         }
@@ -135,7 +154,7 @@ impl BatteryModule {
         let stat_path = resolved.join("status");
 
         // Initial render
-        update_battery_label(&label, &cap_path, &stat_path, &opts);
+        update_battery_label(&label, Some(&image), &cap_path, &stat_path, &opts);
 
         // Event-driven updates via gio FileMonitor (no polling, stays on GTK main loop)
         let mut monitors: Vec<gio::FileMonitor> = Vec::new();
@@ -144,12 +163,13 @@ impl BatteryModule {
             if let Ok(mon) = file.monitor_file(gio::FileMonitorFlags::NONE, None::<&gio::Cancellable>) {
                 log::info!("Monitoring battery file: {:?}", p);
                 let lbl = label.clone();
+                let img = image.clone();
                 let cap_p = cap_path.clone();
                 let stat_p = stat_path.clone();
                 let opts_c = opts.clone();
                 mon.connect_changed(move |_, _file, _other, _event| {
                     log::info!("Battery file changed: {:?}", _event);
-                    update_battery_label(&lbl, &cap_p, &stat_p, &opts_c);
+                    update_battery_label(&lbl, Some(&img), &cap_p, &stat_p, &opts_c);
                 });
                 monitors.push(mon);
             } else {
@@ -163,12 +183,14 @@ impl BatteryModule {
 
         // Fallback polling every 5 seconds (event-driven not reliable on sysfs)
         let label_weak = label.downgrade();
+        let image_weak = image.downgrade();
         let cap_path_clone = cap_path.clone();
         let stat_path_clone = stat_path.clone();
         let opts_clone = opts.clone();
         glib::timeout_add_local(std::time::Duration::from_secs(5), move || {
             if let Some(lbl) = label_weak.upgrade() {
-                update_battery_label(&lbl, &cap_path_clone, &stat_path_clone, &opts_clone);
+                let img_opt = image_weak.upgrade();
+                update_battery_label(&lbl, img_opt.as_ref(), &cap_path_clone, &stat_path_clone, &opts_clone);
                 glib::ControlFlow::Continue
             } else {
                 glib::ControlFlow::Break
@@ -218,6 +240,7 @@ fn find_powerprofilesctl() -> Option<std::path::PathBuf> {
 
 fn update_battery_label(
     label: &gtk::Label,
+    image: Option<&gtk::Image>,
     capacity_path: &std::path::Path,
     status_path: &std::path::Path,
     opts: &BatteryOpts,
@@ -234,13 +257,17 @@ fn update_battery_label(
     let p = pct.unwrap_or(0);
     let charging = stat.as_deref() == Some("Charging");
 
-    // Choose icon
-    let icon = if opts.show_icon {
-        let base = if p >= 95 { "🔋" } else if p >= 80 { "🟩" } else if p >= 50 { "🟨" } else if p >= 30 { "🟧" } else { "🟥" };
-        if charging { format!("{}⚡", base) } else { base.to_string() }
-    } else { String::new() };
+    // Choose icon name (symbolic SVG from theme)
+    if let Some(img) = image {
+        if opts.show_icon {
+            let icon_name = select_battery_icon_name(p, charging);
+            img.set_icon_name(Some(icon_name.as_str()));
+        } else {
+            img.set_icon_name(None::<&str>);
+        }
+    }
 
-    let txt = if opts.show_percentage { format!("{} {}%", icon, p) } else { icon };
+    let txt = if opts.show_percentage { format!("{}%", p) } else { String::new() };
     log::debug!("Battery update: {}%, status: {:?}, text: {}", p, stat, txt);
     label.set_text(&txt);
 
@@ -263,6 +290,21 @@ fn update_battery_label(
                 glib::ControlFlow::Break
             });
         }
+    }
+}
+
+fn select_battery_icon_name(percent: u8, charging: bool) -> String {
+    // Map to standard Adwaita symbolic icon names
+    let bucket = if percent >= 95 { "full" }
+        else if percent >= 80 { "good" }
+        else if percent >= 55 { "medium" }
+        else if percent >= 30 { "low" }
+        else if percent > 5 { "caution" }
+        else { "empty" };
+    if charging {
+        format!("battery-{}-charging-symbolic", bucket)
+    } else {
+        format!("battery-{}-symbolic", bucket)
     }
 }
 

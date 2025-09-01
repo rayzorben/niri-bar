@@ -63,9 +63,6 @@ pub struct ModuleConfig {
     pub net: Option<bool>,
     #[serde(default)]
     pub enabled: Option<bool>,
-    /// Text alignment for this module
-    #[serde(default)]
-    pub align: Option<TextAlign>,
     /// Display mode for this module
     #[serde(default)]
     pub display: Option<DisplayMode>,

@@ -1,4 +1,4 @@
-use crate::config::{ConfigManager, LoggingConfig};
+use crate::config::{ConfigManager, LoggingConfig, ModuleConfig};
 use crate::monitor::Monitor;
 use gtk4::prelude::*;
 use gtk4::{Application as GtkApplication};
@@ -220,7 +220,8 @@ impl Application {
                                         .unwrap_or_default();
                                     // Build module format map (single merged format; date_format deprecated)
                                     let module_formats = Self::collect_module_formats(config_manager, &connector);
-                                    existing_monitor.update_columns_with_specs(&column_specs, &module_formats);
+                                    let module_configs = Self::collect_module_configs(config_manager, &connector);
+                                    existing_monitor.update_columns_with_specs(&column_specs, &module_formats, &module_configs);
                                 }
                             } else {
                                 // Create new monitor
@@ -239,7 +240,8 @@ impl Application {
                                     .map(|layout| layout.columns.into_iter().collect())
                                     .unwrap_or_default();
                                 let module_formats = Self::collect_module_formats(config_manager, &connector);
-                                new_monitor.update_columns_with_specs(&column_specs, &module_formats);
+                                let module_configs = Self::collect_module_configs(config_manager, &connector);
+                                new_monitor.update_columns_with_specs(&column_specs, &module_formats, &module_configs);
                                 new_monitor.show_bar();
                                 monitors_guard.insert(connector.clone(), new_monitor);
                             }
@@ -287,6 +289,35 @@ impl Application {
                     if let Some(fmt) = mc.format.clone() {
                         map.insert(name.clone(), fmt);
                     }
+                }
+            }
+        }
+        map
+    }
+
+    fn collect_module_configs(config_manager: &ConfigManager, connector: &str) -> std::collections::HashMap<String, ModuleConfig> {
+        let mut map = std::collections::HashMap::new();
+        // read current config
+        let config_guard = config_manager.config.lock().unwrap();
+        if let Some(cfg) = &*config_guard {
+            // Start with global module defaults
+            for (name, mc) in &cfg.application.modules {
+                map.insert(name.clone(), mc.clone());
+            }
+            // Overlay per-monitor overrides
+            // Find best matching monitor config
+            let mut best: Option<&crate::config::MonitorConfig> = None;
+            let mut best_spec = 0;
+            for m in &cfg.application.monitors {
+                if ConfigManager::matches_pattern(connector, &m.match_pattern) {
+                    let s = ConfigManager::pattern_specificity(&m.match_pattern);
+                    if s > best_spec { best = Some(m); best_spec = s; }
+                }
+            }
+            if let Some(m) = best
+                && let Some(mods) = &m.modules {
+                for (name, mc) in mods {
+                    map.insert(name.clone(), mc.clone());
                 }
             }
         }

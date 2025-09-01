@@ -16,6 +16,9 @@ impl ClockModule {
 
         let label = gtk::Label::new(None);
         label.add_css_class("module-clock");
+        // Fill column width; alignment set by column logic
+        label.set_hexpand(true);
+        label.set_halign(gtk::Align::Fill);
 
         let now_text = Local::now().format(&fmt).to_string();
         label.set_text(&now_text);

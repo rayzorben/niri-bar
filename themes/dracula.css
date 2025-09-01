@@ -1,168 +1,54 @@
-/* Dracula Theme - Dark purple theme */
+/* =============================================================================
+   Dracula Theme - Dark purple theme
+   =============================================================================
+   This theme inherits all structural styles from base.css and only overrides
+   colors and animations.
 
-/* === Top-level elements === */
-window {
-    background-color: transparent;
-    border: none;
-    border-radius: 0px;
-    color: #f8f8f2;
-    font-family: 'Sans', sans-serif;
-    font-size: 12px;
-    font-weight: bold;
+   TO MODIFY THIS THEME:
+   =============================================================================
+   🎨 Change the CSS custom properties below to customize colors
+   🔄 Modify animation timings and effects if desired
+   ============================================================================= */
+
+@import url("base.css");
+
+/* ===== COLOR OVERRIDES ===== */
+:root {
+    /* Global colors */
+    --text-primary: #f8f8f2;
+    --border-color: #6272a4;
+
+    /* Column colors */
+    --column-bg: #282a36;
+    --column-left-text: #50fa7b;
+    --column-center-text: #f8f8f2;
+    --column-right-text: #ff5555;
+    --column-left-of-center-text: #50fa7b;
+    --column-right-of-center-text: #ff5555;
+
+    /* Column border colors - themed per position */
+    --column-left-border: #50fa7b;      /* Green for left */
+    --column-center-border: #bd93f9;    /* Purple for center */
+    --column-right-border: #ff5555;     /* Red for right */
+
+    /* Module colors */
+    --module-workspaces: #50fa7b;
+    --module-window-title: #f8f8f2;
+    --module-clock: #ff5555;
+    --module-battery: #8be9fd;
+    --module-system: #f1fa8c;
+
+    /* Interaction colors */
+    --hover-bg: #44475a;
+    --active-bg: #bd93f9;
+    --active-text: #282a36;
+    --warning-color: #f1fa8c;
+    --critical-color: #ff5555;
 }
 
-/* Columns container */
-.bar-columns {
-    padding: 2px 6px;
-}
-
-/* Individual columns */
-.bar-columns > .column {
-    background-color: #282a36;
-    border: 1px solid #44475a;
-    border-radius: 5px;
-    padding: 2px 6px;
-    margin: 0 6px;
-}
-
-/* Thin outline helper class no longer adds extra border (styling lives on columns) */
-.column-outline { border: none; padding: 0; }
-
-/* Kebab visibility by overflow policy */
-.column-kebab { opacity: 0.9; }
-.overflow-hide .column-kebab { display: none; }
-.overflow-kebab .column-kebab { display: inline; }
-
-/* Base label styling */
-label {
-    color: #f8f8f2;
-    padding: 0 6px;
-    background: transparent;
-}
-
-/* Ensure columns can shrink within flex container and title has a sane minimum */
-.bar-columns > .column { min-width: 0; }
-.module-window-title { min-width: 10ch; }
-
-/* Monitor-specific styling */
-#monitor-eDP-1 label {
-    color: #f8f8f2;
-}
-
-#monitor-DP-1 label {
-    color: #f8f8f2;
-}
-
-#monitor-DP-2 label {
-    color: #f8f8f2;
-}
-
-#monitor-DP-3 label {
-    color: #f8f8f2;
-}
-
-/* Column-specific styling */
-#column-left label {
-    color: #50fa7b;
-}
-
-#column-center label {
-    color: #f8f8f2;
-}
-
-#column-right label {
-    color: #ff5555;
-}
-
-#column-left-of-center label {
-    color: #50fa7b;
-}
-
-#column-right-of-center label {
-    color: #ff5555;
-}
-
-/* Module-specific styling */
-#module-workspaces label {
-    color: #50fa7b;
-    font-weight: bold;
-}
-
-#module-window_title label {
-    color: #f8f8f2;
-    font-style: italic;
-}
-
-#module-clock label {
-    color: #ff5555;
-    font-weight: bold;
-}
-
-#module-battery label {
-    color: #8be9fd;
-}
-
-#module-system label {
-    color: #f1fa8c;
-}
-
-.module-clock {
-    color: #f8f8f2;
-    padding: 0 6px;
-}
-
-/* Specific combinations */
-#monitor-eDP-1 #column-left #module-workspaces label {
-    color: #50fa7b;
-}
-
-#monitor-eDP-1 #column-left-of-center #module-window_title label {
-    color: #50fa7b;
-}
-
-#monitor-eDP-1 #column-right-of-center #module-clock label {
-    color: #ff5555;
-}
-
-#monitor-eDP-1 #column-right #module-system label {
-    color: #f1fa8c;
-}
-
-/* Hover effects */
-label:hover {
-    background-color: #44475a;
-    border-radius: 4px;
-}
-
-/* Active/selected states */
-#module-workspaces label.active {
-    background-color: #50fa7b;
-    color: #282a36;
-    border-radius: 4px;
-}
-
-#module-battery label.warning {
-    color: #f1fa8c;
-}
-
-#module-battery label.critical {
-    color: #ff5555;
-    font-weight: bold;
-}
-
-/* Workspaces module styling */
-.module-workspaces { gap: 6px; }
-.workspace-pill {
-    padding: 2px 10px;
-    border-radius: 5px;
-    background: #44475a;
-    color: #f8f8f2;
-    transition: transform 250ms ease, background-color 150ms ease;
-}
-.workspace-pill:hover { background: #5b5f73; }
+/* ===== WORKSPACE ANIMATION OVERRIDES ===== */
 .workspace-pill.active {
-    background: #bd93f9;
-    color: #282a36;
+    background: var(--active-bg);
+    color: var(--active-text);
     transform: scale(1.08);
 }
-.workspace-pill.pulse { transform: scale(1.15); }

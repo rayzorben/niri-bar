@@ -6,7 +6,7 @@ use gtk4_layer_shell::{LayerShell, Layer, Edge};
 use gdk4::{Display, Monitor as GdkMonitor};
 use gtk4 as gtk;
 use gtk4::{MenuButton, Popover, ListBox};
-use crate::config::{ColumnSpec, ColumnOverflowPolicy};
+use crate::config::{ColumnSpec, ColumnOverflowPolicy, TextAlign, DisplayMode, ModuleConfig};
 use crate::modules::create_module_widget;
 use std::collections::HashMap;
 
@@ -65,6 +65,7 @@ impl Bar {
         
         // Create main container for columns
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        // Equal-width columns across the bar
         container.set_homogeneous(true);
         container.set_hexpand(true);
         container.set_halign(gtk::Align::Fill);
@@ -90,33 +91,74 @@ impl Bar {
 
     /// Load CSS theme from file
     fn load_theme_css(theme: &str) -> String {
-        let theme_path = format!("themes/{}.css", theme);
-        match std::fs::read_to_string(&theme_path) {
-            Ok(css) => {
-                log::info!("Bar: Loaded CSS theme: {}", theme);
-                css
+        let mut css_content = String::new();
+
+        // First, load base.css
+        let base_path = "themes/base.css";
+        match std::fs::read_to_string(base_path) {
+            Ok(base_css) => {
+                css_content.push_str(&base_css);
+                css_content.push('\n');
+                log::info!("Bar: Loaded base CSS");
             }
             Err(e) => {
-                log::warn!("Bar: Failed to load theme '{}': {}, using default", theme, e);
-                // Fallback to default CSS
-                r#"
+                log::warn!("Bar: Failed to load base.css: {}, using fallback", e);
+                css_content.push_str(r#"
                 window {
-                    background-color: rgba(0, 0, 0, 0.9);
-                    border: 2px solid #ff6b6b;
+                    background-color: transparent;
+                    border: none;
                     border-radius: 0px;
-                    color: white;
+                    color: #f6f3e8;
                     font-family: 'Sans', sans-serif;
-                    font-size: 14px;
+                    font-size: 12px;
                     font-weight: bold;
                 }
                 label {
-                    color: white;
-                    padding: 8px 16px;
+                    color: #f6f3e8;
+                    padding: 0 6px;
                     background: transparent;
                 }
-                "#.to_string()
+                "#);
             }
         }
+
+        // Then load theme-specific CSS
+        let theme_path = format!("themes/{}.css", theme);
+        match std::fs::read_to_string(&theme_path) {
+            Ok(theme_css) => {
+                css_content.push_str(&theme_css);
+                log::info!("Bar: Loaded CSS theme: {}", theme);
+            }
+            Err(e) => {
+                log::warn!("Bar: Failed to load theme '{}': {}, using defaults", theme, e);
+                // Add default theme variables
+                css_content.push_str(r#"
+                :root {
+                    --bg-transparent: transparent;
+                    --text-primary: #f6f3e8;
+                    --border-color: #8f8f8f;
+                    --column-bg: #242424;
+                    --column-left-text: #cae682;
+                    --column-center-text: #f6f3e8;
+                    --column-right-text: #e5786d;
+                    --column-left-of-center-text: #b4d273;
+                    --column-right-of-center-text: #e5786d;
+                    --module-workspaces: #cae682;
+                    --module-window-title: #f6f3e8;
+                    --module-clock: #e5786d;
+                    --module-battery: #8ac6f2;
+                    --module-system: #f4bf75;
+                    --hover-bg: #3a3a3a;
+                    --active-bg: #cae682;
+                    --active-text: #242424;
+                    --warning-color: #f4bf75;
+                    --critical-color: #e5786d;
+                }
+                "#);
+            }
+        }
+
+        css_content
     }
 
     /// Show the bar
@@ -222,7 +264,7 @@ impl Bar {
     }
 
     /// Update columns from (name, ColumnSpec) pairs; applies overflow policy
-    pub fn update_layout_columns(&mut self, columns: &[(String, ColumnSpec)], module_formats: &HashMap<String, String>) {
+    pub fn update_layout_columns(&mut self, columns: &[(String, ColumnSpec)], module_formats: &HashMap<String, String>, module_configs: &HashMap<String, ModuleConfig>) {
         // Clear existing content
         while let Some(child) = self.container.first_child() {
             self.container.remove(&child);
@@ -231,9 +273,30 @@ impl Bar {
         let columns_count = columns.len().max(1) as i32;
         for (name, spec) in columns {
             let safe = name.replace([' ', '-'], "_");
-            let column_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-            column_box.set_hexpand(true);
+            let column_box = gtk::Box::new(gtk::Orientation::Horizontal, spec.gap.unwrap_or(0));
+
+            // Column sizing: equal width by default (container homogeneous=true)
+            // Allow optional fixed pixel width per column
+            if let Some(width) = spec.width {
+                column_box.set_hexpand(false);
+                column_box.set_size_request(width, -1);
+            } else {
+                column_box.set_hexpand(true);
+            }
+
+            // Columns themselves always fill their equal-width allocation
             column_box.set_halign(gtk::Align::Fill);
+            column_box.set_hexpand(true);
+
+            // Determine effective text alignment for this column (column-level only)
+            let effective_align: TextAlign = spec
+                .align
+                .clone()
+                .unwrap_or_else(|| match name.as_str() {
+                    "center" => TextAlign::Center,
+                    "right" => TextAlign::Right,
+                    _ => TextAlign::Left,
+                });
             column_box.add_css_class("column");
             column_box.add_css_class(&format!("column-{}", safe));
             match spec.overflow {
@@ -244,6 +307,16 @@ impl Bar {
             // Build module widgets dynamically via registry (collect first, decide overflow later)
             let mut module_widgets: Vec<gtk::Widget> = Vec::new();
             for module in &spec.modules {
+                // Get module configuration
+                let module_config = module_configs.get(module);
+
+                // Check display property - skip hidden modules
+                if let Some(config) = module_config {
+                    if matches!(config.display.as_ref().unwrap_or(&DisplayMode::Show), DisplayMode::Hide) {
+                        continue;
+                    }
+                }
+
                 // Merge module settings from provided format map into a minimal settings struct
                 let settings = crate::config::ModuleConfig {
                     format: module_formats.get(module).cloned(),
@@ -259,6 +332,8 @@ impl Bar {
                     mem: None,
                     net: None,
                     enabled: None,
+                    align: module_config.and_then(|c| c.align.clone()),
+                    display: module_config.and_then(|c| c.display.clone()),
                     additional: std::collections::HashMap::new(),
                 };
 
@@ -304,9 +379,29 @@ impl Bar {
                 }
             }
 
-            // Append widgets that fit
-            for w in &module_widgets {
+            // Append widgets that fit, setting alignment based on column alignment
+            for (i, w) in module_widgets.iter().enumerate() {
                 if !overflowed.iter().any(|ow| ow == w) {
+                    // GTK4 CSS doesn't support text-align, so set alignment programmatically
+                    if let Some(label) = w.downcast_ref::<gtk::Label>() {
+                        // Use column-level alignment only
+                        let module_align = &effective_align;
+
+                        match module_align {
+                            TextAlign::Center => label.set_xalign(0.5),
+                            TextAlign::Left => label.set_xalign(0.0),
+                            TextAlign::Right => label.set_xalign(1.0),
+                        }
+                        // Also set justification to be safe across label modes
+                        label.set_justify(match module_align {
+                            TextAlign::Center => gtk::Justification::Center,
+                            TextAlign::Left => gtk::Justification::Left,
+                            TextAlign::Right => gtk::Justification::Right,
+                        });
+                    }
+                    // Ensure child expands to column width so alignment is visible
+                    w.set_hexpand(true);
+                    w.set_halign(gtk::Align::Fill);
                     column_box.append(w);
                 }
             }
@@ -314,6 +409,14 @@ impl Bar {
             // Move overflowed widgets into popover as rows
             for w in overflowed {
                 if matches!(spec.overflow, ColumnOverflowPolicy::Kebab) {
+                    // Set alignment for overflowed labels too - use column alignment for overflow
+                    if let Some(label) = w.downcast_ref::<gtk::Label>() {
+                        match effective_align {
+                            TextAlign::Center => label.set_xalign(0.5),
+                            TextAlign::Left => label.set_xalign(0.0),
+                            TextAlign::Right => label.set_xalign(1.0),
+                        }
+                    }
                     let row = gtk::ListBoxRow::new();
                     row.add_css_class("column-overflow-row");
                     row.set_child(Some(&w));

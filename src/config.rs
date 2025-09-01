@@ -6,6 +6,34 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use anyhow::Result;
 
+/// Text alignment options
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TextAlign {
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "center")]
+    Center,
+    #[serde(rename = "right")]
+    Right,
+}
+
+impl Default for TextAlign {
+    fn default() -> Self { Self::Left }
+}
+
+/// Display visibility options
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DisplayMode {
+    #[serde(rename = "show")]
+    Show,
+    #[serde(rename = "hide")]
+    Hide,
+}
+
+impl Default for DisplayMode {
+    fn default() -> Self { Self::Show }
+}
+
 /// Module configuration with YAML anchor support
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleConfig {
@@ -35,6 +63,12 @@ pub struct ModuleConfig {
     pub net: Option<bool>,
     #[serde(default)]
     pub enabled: Option<bool>,
+    /// Text alignment for this module
+    #[serde(default)]
+    pub align: Option<TextAlign>,
+    /// Display mode for this module
+    #[serde(default)]
+    pub display: Option<DisplayMode>,
     // Allow additional fields
     #[serde(flatten)]
     pub additional: HashMap<String, serde_yaml::Value>,
@@ -53,6 +87,8 @@ impl Default for ColumnOverflowPolicy {
     fn default() -> Self { Self::Hide }
 }
 
+// Removed ColumnSize in favor of simpler equal-width behavior + optional fixed width per column
+
 /// Per-column spec: modules + overflow policy
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ColumnSpec {
@@ -60,6 +96,15 @@ pub struct ColumnSpec {
     pub modules: Vec<String>,
     #[serde(default)]
     pub overflow: ColumnOverflowPolicy,
+    /// Spacing between modules in this column (in pixels)
+    #[serde(default)]
+    pub gap: Option<i32>,
+    /// Horizontal alignment for this column's contents
+    #[serde(default)]
+    pub align: Option<TextAlign>,
+    /// Fixed width for fixed-size columns (in pixels)
+    #[serde(default)]
+    pub width: Option<i32>,
 }
 
 /// Layout configuration with column mapping

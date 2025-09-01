@@ -13,9 +13,11 @@ impl WindowTitleModule {
         let label = gtk::Label::new(None);
         label.add_css_class("module-window-title");
         label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-        label.set_xalign(0.0);
-        // Allow the label to shrink but keep a minimum width controlled via CSS
-        label.set_hexpand(false);
+        // Allow the label to fill its column; horizontal alignment will be set by column
+        label.set_hexpand(true);
+        label.set_halign(gtk::Align::Fill);
+
+        // GTK4 CSS doesn't support text-align, so we handle alignment programmatically
 
         // Set initial title from bus state
         let bus = niri_bus();

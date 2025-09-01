@@ -3,6 +3,7 @@ description: best practices for this project
 globs: *.*
 alwaysApply: true
 ---
+- kill niri-bar first - if it is running it will give you errors
 - Always use classes except for the entry point (main.rs).
 - All unit tests go in `tests/` (never inline in source files).  
    - Run `cargo test` after every change.  

@@ -1,168 +1,54 @@
-/* Wombat Theme - Warm dark theme with brown/orange accents */
+/* =============================================================================
+   Wombat Theme - Warm dark theme with brown/orange accents
+   =============================================================================
+   This theme inherits all structural styles from base.css and only overrides
+   colors and animations.
 
-/* === Top-level elements === */
-window {
-    background-color: transparent;
-    border: none;
-    border-radius: 0px;
-    color: #f6f3e8;
-    font-family: 'Sans', sans-serif;
-    font-size: 12px;
-    font-weight: bold;
+   TO MODIFY THIS THEME:
+   =============================================================================
+   🎨 Change the CSS custom properties below to customize colors
+   🔄 Modify animation timings and effects if desired
+   ============================================================================= */
+
+@import url("base.css");
+
+/* ===== COLOR OVERRIDES ===== */
+:root {
+    /* Global colors */
+    --text-primary: #f6f3e8;
+    --border-color: #8f8f8f;
+
+    /* Column colors */
+    --column-bg: #242424;
+    --column-left-text: #cae682;
+    --column-center-text: #f6f3e8;
+    --column-right-text: #e5786d;
+    --column-left-of-center-text: #b4d273;
+    --column-right-of-center-text: #e5786d;
+
+    /* Column border colors - themed per position */
+    --column-left-border: #cae682;      /* Green for left */
+    --column-center-border: #f6f3e8;    /* Light for center */
+    --column-right-border: #e5786d;     /* Red for right */
+
+    /* Module colors */
+    --module-workspaces: #cae682;
+    --module-window-title: #f6f3e8;
+    --module-clock: #e5786d;
+    --module-battery: #8ac6f2;
+    --module-system: #f4bf75;
+
+    /* Interaction colors */
+    --hover-bg: #3a3a3a;
+    --active-bg: #ffcc66;
+    --active-text: #1b1b1b;
+    --warning-color: #f4bf75;
+    --critical-color: #e5786d;
 }
 
-/* Columns container */
-.bar-columns {
-    padding: 2px 6px;
-}
-
-/* Individual columns */
-.bar-columns > .column {
-    background-color: #242424;
-    border: 1px solid #8f8f8f;
-    border-radius: 5px;
-    padding: 2px 6px;
-    margin: 0 6px;
-}
-
-/* Outline helper neutralized */
-.column-outline { border: none; padding: 0; }
-
-/* Kebab visibility by overflow policy */
-.column-kebab { opacity: 0.9; }
-.overflow-hide .column-kebab { display: none; }
-.overflow-kebab .column-kebab { display: inline; }
-
-/* Base label styling */
-label {
-    color: #f6f3e8;
-    padding: 0 6px;
-    background: transparent;
-}
-
-/* Ensure columns can shrink within flex container and title has a sane minimum */
-.bar-columns > .column { min-width: 0; }
-.module-window-title { min-width: 10ch; }
-
-/* Monitor-specific styling */
-#monitor-eDP-1 label {
-    color: #f6f3e8;
-}
-
-#monitor-DP-1 label {
-    color: #f6f3e8;
-}
-
-#monitor-DP-2 label {
-    color: #f6f3e8;
-}
-
-#monitor-DP-3 label {
-    color: #f6f3e8;
-}
-
-/* Column-specific styling */
-#column-left label {
-    color: #cae682;
-}
-
-#column-center label {
-    color: #f6f3e8;
-}
-
-#column-right label {
-    color: #e5786d;
-}
-
-#column-left-of-center label {
-    color: #b4d273;
-}
-
-#column-right-of-center label {
-    color: #e5786d;
-}
-
-/* Module-specific styling */
-#module-workspaces label {
-    color: #cae682;
-    font-weight: bold;
-}
-
-#module-window_title label {
-    color: #f6f3e8;
-    font-style: italic;
-}
-
-#module-clock label {
-    color: #e5786d;
-    font-weight: bold;
-}
-
-#module-battery label {
-    color: #8ac6f2;
-}
-
-#module-system label {
-    color: #f4bf75;
-}
-
-.module-clock {
-    color: #ffffff;
-    padding: 0 6px;
-}
-
-/* Specific combinations */
-#monitor-eDP-1 #column-left #module-workspaces label {
-    color: #cae682;
-}
-
-#monitor-eDP-1 #column-left-of-center #module-window_title label {
-    color: #b4d273;
-}
-
-#monitor-eDP-1 #column-right-of-center #module-clock label {
-    color: #e5786d;
-}
-
-#monitor-eDP-1 #column-right #module-system label {
-    color: #f4bf75;
-}
-
-/* Hover effects */
-label:hover {
-    background-color: #3a3a3a;
-    border-radius: 4px;
-}
-
-/* Active/selected states */
-#module-workspaces label.active {
-    background-color: #cae682;
-    color: #242424;
-    border-radius: 4px;
-}
-
-#module-battery label.warning {
-    color: #f4bf75;
-}
-
-#module-battery label.critical {
-    color: #e5786d;
-    font-weight: bold;
-}
-/* Test CSS change */
-/* Workspaces module styling */
-.module-workspaces { gap: 6px; }
-.workspace-pill {
-    padding: 2px 10px;
-    border-radius: 5px;
-    background: #3a3a3a;
-    color: #ffffff;
-    transition: transform 250ms ease, background-color 150ms ease;
-}
-.workspace-pill:hover { background: #4a4a4a; }
+/* ===== WORKSPACE ANIMATION OVERRIDES ===== */
 .workspace-pill.active {
-    background: #ffcc66;
-    color: #1b1b1b;
+    background: var(--active-bg);
+    color: var(--active-text);
     transform: scale(1.08);
 }
-.workspace-pill.pulse { transform: scale(1.15); }

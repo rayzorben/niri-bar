@@ -2,7 +2,7 @@ use crate::bar::Bar;
 use gtk4::prelude::*;
 use gtk4::{Application as GtkApplication};
 use gdk4::{Monitor as GdkMonitor};
-use crate::config::ColumnSpec;
+use crate::config::{ColumnSpec, ModuleConfig};
 use std::collections::HashMap;
 
 /// Monitor information and management
@@ -139,10 +139,10 @@ impl Monitor {
     }
 
     /// Update layout columns with full specs (name + modules + overflow)
-    pub fn update_columns_with_specs(&mut self, columns: &[(String, ColumnSpec)], module_formats: &HashMap<String, String>) {
+    pub fn update_columns_with_specs(&mut self, columns: &[(String, ColumnSpec)], module_formats: &HashMap<String, String>, module_configs: &HashMap<String, ModuleConfig>) {
         if let Some(bar) = &mut self.bar {
             log::debug!("Monitor: Updating column specs for {}: {} columns", self.info.connector, columns.len());
-            bar.update_layout_columns(columns, module_formats);
+            bar.update_layout_columns(columns, module_formats, module_configs);
         }
     }
 

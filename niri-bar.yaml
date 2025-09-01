@@ -3,7 +3,7 @@
 # 
 application:
   # Theme configuration
-  theme: "wombat"  # Options: wombat, solarized, dracula
+  theme: "dracula"  # Options: wombat, solarized, dracula
 
   # ---- GLOBAL *MODULE DEFAULTS ----
   modules:
@@ -18,31 +18,43 @@ application:
     window_title: &window_title_default
       max_length: 80
       ellipsize: "end"
+      align: "center"  # left, center, right
+      display: "show"  # show, hide
 
     battery: &battery_default
       show_percentage: true
       warn_threshold: 20
       critical_threshold: 10
+      align: "left"    # left, center, right
+      display: "show"  # show, hide
 
     system: &system_default
       cpu: true
       mem: true
       net: true
+      align: "left"    # left, center, right
+      display: "show"  # show, hide
 
   # ---- LAYOUT PROFILES ----
   layouts:
     # Default everywhere: simple 3 columns
     three_column: &layout_three
-      columns:
-        left:
+      columns: &cols_three
+        left: &col_left
           modules: ["workspaces"]
           overflow: hide
-        center:
+          gap: 6        # pixels between modules
+          align: "left" # left, center, right
+        center: &col_center
           modules: ["window_title"]
           overflow: hide
-        right:
-          modules: ["clock", "window_title", "clock", "clock", "battery", "system"]
+          gap: 6
+          align: "center"  # Center column centers its contents
+        right: &col_right
+          modules: [ "clock" ]
           overflow: kebab
+          gap: 8         # Slightly more spacing for crowded right column
+          align: "right"
 
     # Laptop override: 5 panels (left, left-of-center, center, right-of-center, right)
     five_panel: &layout_five
@@ -50,18 +62,28 @@ application:
         left:
           modules: ["workspaces"]
           overflow: hide
+          gap: 6
+          align: "left"
         left-of-center:
           modules: ["window_title"]
           overflow: hide
+          gap: 6
+          align: "left"
         center:
           modules: []
           overflow: hide
+          gap: 6
+          align: "center"
         right-of-center:
           modules: ["clock"]
           overflow: hide
+          gap: 6
+          align: "right"
         right:
           modules: ["battery", "system"]
           overflow: kebab
+          gap: 8
+          align: "right"
 
   # ---- MONITOR CONFIG ----
   monitors:
@@ -82,12 +104,36 @@ application:
       enabled: true
 
       layout:
-        <<: *layout_three
+        columns:
+          left:
+            modules: ["workspaces"]
+            overflow: hide
+            gap: 6
+            align: "left"
+            # Optional fixed width: uncomment to lock width
+            # width: 200
+          center:
+            modules: ["window_title"]
+            overflow: hide
+            gap: 4         # Tighter spacing for laptop
+            align: "center"
+            # width: 400
+          right:
+            modules: ["clock"]
+            overflow: hide
+            gap: 6
+            align: "right"
+            # width: 200
 
       modules:
         clock:
           <<: *clock_default
           format: "%a %b %d, %Y @ %I:%M:%S %p"  # per-monitor override (shorter format)
+          align: "center"  # Center clock on laptop
+        window_title:
+          <<: *window_title_default
+          display: "show"  # Ensure visible on laptop
+          align: "center"  # Center title on laptop
 
     # Example: disable all other DP heads (optional)
     - match: "^DP-.*$"

@@ -1,0 +1,240 @@
+/* =============================================================================
+   Niri Bar - Base Theme
+   =============================================================================
+   This file contains all structural/layout styles and default values.
+   Individual theme files (wombat.css, solarized.css, dracula.css) only
+   override colors and animations.
+
+   TO MODIFY SPECIFIC SETTINGS:
+   =============================================================================
+
+   🎨 GLOBAL THEME COLORS (edit in individual theme files):
+   - Background colors, text colors, borders, hover effects
+
+   🔤 GLOBAL FONT SETTINGS (edit here in base.css):
+   - Font family, size, weight for all text
+
+   📐 COLUMN COLORS & ALIGNMENT (edit in individual theme files):
+   - Each column's background, border, text color
+   - Text alignment (left/center/right) per column
+
+   🧩 MODULE-SPECIFIC STYLES (edit in individual theme files):
+   - Colors for workspaces, clock, window_title, battery, system modules
+   - Font weight, style, special effects per module
+
+   ============================================================================= */
+
+/* ===== CSS CUSTOM PROPERTIES (VARIABLES) FOR THEMING ===== */
+/* These are overridden by individual theme files */
+:root {
+    /* === GLOBAL COLORS === */
+    --bg-transparent: transparent;
+    --text-primary: #f6f3e8;
+    --border-color: #8f8f8f;
+
+    /* === COLUMN COLORS === */
+    --column-bg: #242424;
+    --column-left-text: #cae682;
+    --column-center-text: #f6f3e8;
+    --column-right-text: #e5786d;
+    --column-left-of-center-text: #b4d273;
+    --column-right-of-center-text: #e5786d;
+
+    /* === MODULE COLORS === */
+    --module-workspaces: #cae682;
+    --module-window-title: #f6f3e8;
+    --module-clock: #e5786d;
+    --module-battery: #8ac6f2;
+    --module-system: #f4bf75;
+
+    /* === INTERACTION COLORS === */
+    --hover-bg: #3a3a3a;
+    --active-bg: #cae682;
+    --active-text: #242424;
+    --warning-color: #f4bf75;
+    --critical-color: #e5786d;
+}
+
+/* ===== GLOBAL BAR STRUCTURE ===== */
+window {
+    background-color: var(--bg-transparent);
+    border: none;
+    border-radius: 0px;
+
+    /* 🔤 GLOBAL FONT SETTINGS - EDIT HERE */
+    color: var(--text-primary);
+    font-family: 'Sans', sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* ===== BAR CONTAINER ===== */
+.bar-columns {
+    padding: 2px 6px;
+}
+
+/* ===== COLUMN STRUCTURE ===== */
+/* Main column styling - themed colored borders */
+.bar-columns > .column {
+    /* 🎨 THEMED COLUMN BORDERS - Colors overridden in theme files */
+    border: 2px solid var(--column-left-border, #ff6b35);
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 2px 4px;
+    margin: 0 2px;
+
+    /* Layout properties */
+    min-width: 0;
+    /* Force the column to visibly fill its allotted equal width */
+    width: 100%;
+}
+
+/* Column position indicators - themed border colors */
+.bar-columns > .column-left {
+    border-color: var(--column-left-border, #ff6b35);
+}
+
+.bar-columns > .column-center {
+    border-color: var(--column-center-border, #4ecdc4);
+}
+
+.bar-columns > .column-right {
+    border-color: var(--column-right-border, #45b7d1);
+}
+
+/* ===== COLUMN SIZE CONTROL ===== */
+/* Column sizing is controlled via YAML configuration, not CSS */
+/* Options: "expand" (default), "shrink", "fixed" (with width property) */
+
+/* For reference - these CSS approaches don't work reliably in GTK4: */
+/*
+.bar-columns.shrink-to-content > .column {
+    flex: none;
+    width: auto;
+}
+.bar-columns.expand-content > .column {
+    flex: 1;
+}
+*/
+
+/* ===== COLUMN OUTLINE SYSTEM ===== */
+.column-outline {
+    border: none;
+    padding: 0;
+}
+
+/* ===== KEBAB MENU SYSTEM ===== */
+/* Visibility handled by Rust code, opacity for styling */
+.column-kebab {
+    opacity: 0.9;
+}
+
+/* ===== BASE LABEL STYLES ===== */
+label {
+    color: var(--text-primary);
+    padding: 0 6px;
+    background: transparent;
+}
+
+/* ===== MODULE MINIMUM WIDTHS ===== */
+.module-window-title {
+    min-width: 100px;  /* GTK doesn't support 'ch' units */
+}
+
+/* ===== MONITOR-SPECIFIC OVERRIDES ===== */
+/* These can be customized per monitor in theme files */
+#monitor-eDP-1 label { color: var(--text-primary); }
+#monitor-DP-1 label { color: var(--text-primary); }
+#monitor-DP-2 label { color: var(--text-primary); }
+#monitor-DP-3 label { color: var(--text-primary); }
+
+/* ===== COLUMN TEXT COLORS ===== */
+/* 📐 COLUMN COLORS - Override in theme files */
+#column-left label { color: var(--column-left-text); }
+#column-center label { color: var(--column-center-text); }
+#column-right label { color: var(--column-right-text); }
+#column-left-of-center label { color: var(--column-left-of-center-text); }
+#column-right-of-center label { color: var(--column-right-of-center-text); }
+
+/* ===== MODULE TEXT COLORS ===== */
+/* 🧩 MODULE-SPECIFIC COLORS - Override in theme files */
+#module-workspaces label {
+    color: var(--module-workspaces);
+    font-weight: bold;
+}
+
+#module-window_title label {
+    color: var(--module-window-title);
+    font-style: italic;
+}
+
+#module-clock label {
+    color: var(--module-clock);
+    font-weight: bold;
+}
+
+#module-battery label {
+    color: var(--module-battery);
+}
+
+#module-system label {
+    color: var(--module-system);
+}
+
+.module-clock {
+    color: var(--text-primary);
+    padding: 0 6px;
+}
+
+/* ===== SPECIFIC MONITOR-MODULE COMBINATIONS ===== */
+/* Override these in theme files for monitor-specific styling */
+#monitor-eDP-1 #column-left #module-workspaces label { color: var(--module-workspaces); }
+#monitor-eDP-1 #column-left-of-center #module-window_title label { color: var(--column-left-of-center-text); }
+#monitor-eDP-1 #column-right-of-center #module-clock label { color: var(--module-clock); }
+#monitor-eDP-1 #column-right #module-system label { color: var(--module-system); }
+
+/* ===== INTERACTION STATES ===== */
+/* 🎨 INTERACTION COLORS - Override in theme files */
+label:hover {
+    background-color: var(--hover-bg);
+    border-radius: 4px;
+}
+
+#module-workspaces label.active {
+    background-color: var(--active-bg);
+    color: var(--active-text);
+    border-radius: 4px;
+}
+
+#module-battery label.warning {
+    color: var(--warning-color);
+}
+
+#module-battery label.critical {
+    color: var(--critical-color);
+    font-weight: bold;
+}
+
+/* ===== WORKSPACE MODULE STRUCTURE ===== */
+/* GTK doesn't support CSS gap property - spacing handled by individual elements */
+
+.workspace-pill {
+    padding: 2px 10px;
+    border-radius: 5px;
+    background: var(--hover-bg);
+    color: var(--text-primary);
+    transition: transform 250ms ease, background-color 150ms ease;
+}
+
+.workspace-pill:hover {
+    background: var(--column-bg);
+}
+
+.workspace-pill.active {
+    background: var(--active-bg);
+    color: var(--active-text);
+    transform: scale(1.08);
+}
+
+.workspace-pill.pulse {
+    transform: scale(1.15);
+}

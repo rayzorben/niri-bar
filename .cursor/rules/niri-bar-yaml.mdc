@@ -15,3 +15,4 @@ alwaysApply: true
 - As part of unit testing, schema validation should always be done fixed if it doesn't validate.
 - NEVER test against the yaml itself as it can change
 - ONLY validate the yaml against the schema
+- using DRY, the defaults for .* match for monitors should always just use the defualt values by the anchors, never modify the .* to do anything else

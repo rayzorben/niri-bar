@@ -86,7 +86,9 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
     }
 
     /// Create a new wallpaper switcher with default executor (convenience method)
-    pub fn new_default_with_config(config: WallpaperConfig) -> WallpaperSwitcher<DefaultWallpaperExecutor> {
+    pub fn new_default_with_config(
+        config: WallpaperConfig,
+    ) -> WallpaperSwitcher<DefaultWallpaperExecutor> {
         WallpaperSwitcher::<DefaultWallpaperExecutor>::new(config, DefaultWallpaperExecutor)
     }
 
@@ -121,14 +123,26 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
     /// switcher.switch_wallpaper(&workspace);
     /// ```
     pub fn switch_wallpaper(&self, workspace: &WorkspaceInfo) {
-        log::info!("WallpaperSwitcher: 📸 switch requested for workspace: {} ({:?})", workspace.idx, workspace.name);
+        log::info!(
+            "WallpaperSwitcher: 📸 switch requested for workspace: {} ({:?})",
+            workspace.idx,
+            workspace.name
+        );
         if let Some(image_path) = self.resolve_wallpaper_path(workspace) {
             // Expand tilde to home directory
             let expanded_path = self.expand_tilde(&image_path);
-            log::info!("WallpaperSwitcher: Resolved image path: {} -> {}", image_path, expanded_path);
+            log::info!(
+                "WallpaperSwitcher: Resolved image path: {} -> {}",
+                image_path,
+                expanded_path
+            );
             self.apply_wallpaper_command(&expanded_path);
         } else {
-            log::info!("WallpaperSwitcher: No wallpaper path resolved for workspace: {} ({:?})", workspace.idx, workspace.name);
+            log::info!(
+                "WallpaperSwitcher: No wallpaper path resolved for workspace: {} ({:?})",
+                workspace.idx,
+                workspace.name
+            );
         }
     }
 
@@ -138,16 +152,24 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
         let key_name = workspace.name.as_deref().unwrap_or("");
         let key_idx = workspace.idx.to_string();
 
-        self.config.by_workspace.get(key_name)
+        self.config
+            .by_workspace
+            .get(key_name)
             .or_else(|| self.config.by_workspace.get(&key_idx))
             .or(self.config.default.as_ref())
             .cloned()
     }
 
     /// Apply wallpaper using available providers
-    fn apply_wallpaper_command(&self, image_path: &str) where E: WallpaperCommandExecutor {
+    fn apply_wallpaper_command(&self, image_path: &str)
+    where
+        E: WallpaperCommandExecutor,
+    {
         // Order: special_cmd -> swww (daemon) -> swaybg -> noop
-        log::info!("WallpaperSwitcher: 📸 switch requested for image: {}", image_path);
+        log::info!(
+            "WallpaperSwitcher: 📸 switch requested for image: {}",
+            image_path
+        );
 
         // 1) special_cmd
         if let Some(cmd) = &self.config.special_cmd {
@@ -159,18 +181,31 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
                 let _args: Vec<&str> = parts.collect();
                 log::debug!("WallpaperSwitcher: 🚀 executing command: {}", prepared);
                 match self.executor.execute_command(&prepared) {
-                    Ok(_) => log::info!("WallpaperSwitcher: ✅ applied via special_cmd: {}", prepared),
-                    Err(e) => log::error!("WallpaperSwitcher: 💥 failed to execute special_cmd '{}': {}", prepared, e),
+                    Ok(_) => log::info!(
+                        "WallpaperSwitcher: ✅ applied via special_cmd: {}",
+                        prepared
+                    ),
+                    Err(e) => log::error!(
+                        "WallpaperSwitcher: 💥 failed to execute special_cmd '{}': {}",
+                        prepared,
+                        e
+                    ),
                 }
             } else {
-                log::warn!("WallpaperSwitcher: 🤨 special_cmd looked sus; no binary parsed: '{}'", prepared);
+                log::warn!(
+                    "WallpaperSwitcher: 🤨 special_cmd looked sus; no binary parsed: '{}'",
+                    prepared
+                );
             }
             return;
         }
 
         // 2) swww if present: set first, then query (for logging/diagnostics)
         let swww_path = self.find_in_path_via_executor("swww");
-        log::debug!("WallpaperSwitcher: 🔎 swww in PATH: {}", swww_path.as_deref().unwrap_or("<none>"));
+        log::debug!(
+            "WallpaperSwitcher: 🔎 swww in PATH: {}",
+            swww_path.as_deref().unwrap_or("<none>")
+        );
         if let Some(swww) = swww_path {
             log::info!("WallpaperSwitcher: 🧪 using swww → img {}", image_path);
             // Build swww command with options
@@ -182,7 +217,10 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
 
                 // Transition duration (only if not 'simple' or 'none')
                 if !matches!(swww_opts.transition_type.as_str(), "simple" | "none") {
-                    cmd_string.push_str(&format!(" --transition-duration {}", swww_opts.transition_duration));
+                    cmd_string.push_str(&format!(
+                        " --transition-duration {}",
+                        swww_opts.transition_duration
+                    ));
                 }
 
                 cmd_string.push_str(&format!(" --transition-step {}", swww_opts.transition_step));
@@ -195,7 +233,10 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
             // Add the image path
             cmd_string.push_str(&format!(" {}", image_path));
 
-            log::debug!("WallpaperSwitcher: 🚀 executing swww command: {}", cmd_string);
+            log::debug!(
+                "WallpaperSwitcher: 🚀 executing swww command: {}",
+                cmd_string
+            );
             match self.executor.execute_command(&cmd_string) {
                 Ok(_) => log::info!("WallpaperSwitcher: ✅ applied via swww"),
                 Err(e) => log::error!("WallpaperSwitcher: 💥 failed to execute swww: {}", e),
@@ -208,7 +249,10 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
                     .output()
                     .map(|o| o.status.success())
                     .unwrap_or(false);
-                log::debug!("WallpaperSwitcher: 🔎 swww post-set query ok: {}", post_query_ok);
+                log::debug!(
+                    "WallpaperSwitcher: 🔎 swww post-set query ok: {}",
+                    post_query_ok
+                );
             });
 
             return;
@@ -216,7 +260,10 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
 
         // 3) swaybg if present
         let swaybg_path = self.find_in_path_via_executor("swaybg");
-        log::debug!("WallpaperSwitcher: 🔎 swaybg in PATH: {}", swaybg_path.as_deref().unwrap_or("<none>"));
+        log::debug!(
+            "WallpaperSwitcher: 🔎 swaybg in PATH: {}",
+            swaybg_path.as_deref().unwrap_or("<none>")
+        );
         if let Some(swaybg) = swaybg_path {
             log::info!("WallpaperSwitcher: 🧪 using swaybg → fill {}", image_path);
             // kill existing (best-effort), then spawn
@@ -251,7 +298,8 @@ impl<E: WallpaperCommandExecutor> WallpaperSwitcher<E> {
     /// Expand tilde (~) to user's home directory
     fn expand_tilde(&self, path: &str) -> String {
         if let Some(stripped) = path.strip_prefix("~/")
-            && let Some(home) = std::env::var_os("HOME") {
+            && let Some(home) = std::env::var_os("HOME")
+        {
             format!("{}/{}", home.to_string_lossy(), stripped)
         } else {
             path.to_string()

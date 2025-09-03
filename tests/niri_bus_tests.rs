@@ -21,7 +21,7 @@ fn test_niri_bus_initial_focus_and_title() {
 #[test]
 fn test_niri_bus_workspace_activation_and_scroll_like_changes() {
     let bus = niri_bus();
-    
+
     // Reset bus state for test isolation
     bus.reset();
 
@@ -47,7 +47,7 @@ fn test_keyboard_layouts_and_overview_events() {
         "{\"KeyboardLayoutsChanged\":{\"keyboard_layouts\":{\"names\":[\"English (US)\",\"English (Intl)\"],\"current_idx\":1}}}",
     );
     let (names, idx) = bus.keyboard_layouts_snapshot();
-    assert_eq!(names, vec!["English (US)", "English (Intl)" ]);
+    assert_eq!(names, vec!["English (US)", "English (Intl)"]);
     assert_eq!(idx, Some(1));
 
     // Overview open/close
@@ -56,4 +56,3 @@ fn test_keyboard_layouts_and_overview_events() {
     bus.handle_json_line("{\"OverviewOpenedOrClosed\":{\"is_open\":false}} ");
     assert!(!bus.is_overview_open());
 }
-

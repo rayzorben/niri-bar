@@ -1,9 +1,9 @@
+use chrono::Local;
 use gtk4 as gtk;
 use gtk4::prelude::*;
-use chrono::Local;
 
-use crate::config::ModuleConfig;
 use super::BarModule;
+use crate::config::ModuleConfig;
 
 pub struct ClockModule;
 
@@ -26,7 +26,7 @@ impl ClockModule {
         // Event-driven clock updates with efficient timing
         let label_weak = label.downgrade();
         let fmt_clone = fmt.clone();
-        
+
         // Use a more efficient update mechanism
         glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
             if let Some(label) = label_weak.upgrade() {
@@ -43,8 +43,10 @@ impl ClockModule {
 }
 
 impl BarModule for ClockModule {
-    fn id(&self) -> &'static str { Self::IDENT }
-    fn create(&self, settings: &ModuleConfig) -> gtk::Widget { Self::create_widget(settings) }
+    fn id(&self) -> &'static str {
+        Self::IDENT
+    }
+    fn create(&self, settings: &ModuleConfig) -> gtk::Widget {
+        Self::create_widget(settings)
+    }
 }
-
-

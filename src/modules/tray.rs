@@ -1,5 +1,5 @@
-use gtk4 as gtk;
 use gtk::prelude::*;
+use gtk4 as gtk;
 
 use crate::config::ModuleConfig;
 
@@ -21,5 +21,3 @@ impl TrayModule {
         root.upcast()
     }
 }
-
-

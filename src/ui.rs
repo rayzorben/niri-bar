@@ -2,7 +2,7 @@ use crate::config::{ConfigManager, NiriBarConfig};
 use anyhow::Result;
 use gtk4 as gtk;
 use gtk4::prelude::*;
-use gtk4_layer_shell::{Layer, LayerShell, Edge};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use std::collections::HashMap;
 
 /// Simple UI bar for a monitor
@@ -17,7 +17,7 @@ impl MonitorBar {
     pub fn new(monitor_name: &str) -> Self {
         // Create the main window
         let window = gtk::Window::new();
-        
+
         // Set up layer shell for Wayland
         window.init_layer_shell();
         window.set_layer(Layer::Top);
@@ -27,17 +27,17 @@ impl MonitorBar {
         window.set_margin(Edge::Top, 0);
         window.set_margin(Edge::Left, 0);
         window.set_margin(Edge::Right, 0);
-        
+
         // Note: set_monitor requires a Monitor object, not a string
         // For now, we'll skip monitor-specific placement
-        
+
         // Create the main container
         let box_container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         box_container.set_margin_start(8);
         box_container.set_margin_end(8);
         box_container.set_margin_top(4);
         box_container.set_margin_bottom(4);
-        
+
         // Add red border styling
         let css_provider = gtk::CssProvider::new();
         css_provider.load_from_data(
@@ -49,27 +49,27 @@ impl MonitorBar {
             }
             "#,
         );
-        
+
         gtk::style_context_add_provider_for_display(
             &gtk::gdk::Display::default().expect("Could not connect to a display."),
             &css_provider,
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
-        
+
         // Add the container to the window
         window.set_child(Some(&box_container));
-        
+
         Self {
             window,
             box_container,
             monitor_name: monitor_name.to_string(),
         }
     }
-    
+
     /// Add a simple label to the bar
     pub fn add_label(&self, text: &str, position: &str) {
         let label = gtk::Label::new(Some(text));
-        
+
         match position {
             "left" => {
                 self.box_container.prepend(&label);
@@ -87,17 +87,17 @@ impl MonitorBar {
             }
         }
     }
-    
+
     /// Show the bar
     pub fn show(&self) {
         self.window.show();
     }
-    
+
     /// Hide the bar
     pub fn hide(&self) {
         self.window.hide();
     }
-    
+
     /// Get the monitor name
     pub fn monitor_name(&self) -> &str {
         &self.monitor_name
@@ -118,39 +118,39 @@ impl UIManager {
             config_manager,
         }
     }
-    
+
     /// Initialize the UI with bars for enabled monitors
     pub fn initialize(&mut self) -> Result<()> {
         // Get the current configuration
         if let Some(config) = self.config_manager.get_config() {
             self.create_bars_for_config(&config)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Create bars based on configuration
     pub fn create_bars_for_config(&mut self, config: &NiriBarConfig) -> Result<()> {
         // Clear existing bars
         self.bars.clear();
-        
+
         // Check if we should show bars on all monitors or specific ones
         // For now, we'll create bars for all enabled monitors
         // In a real implementation, you'd enumerate actual monitors and match them
-        
+
         // Create bars for each monitor using the new application config
         for monitor_match in &config.application.monitors {
             if !monitor_match.show_bar {
                 continue;
             }
-            
+
             // For now, we'll create bars for all enabled monitors
             // In a real implementation, you'd enumerate actual monitors and match them
             let monitor_name = "eDP-1"; // Placeholder - should match against actual monitors
-            
+
             // Create the bar
             let bar = MonitorBar::new(monitor_name);
-            
+
             // Add content based on layout configuration
             if let Some(layout_config) = &monitor_match.layout {
                 for (column_name, spec) in &layout_config.columns {
@@ -178,36 +178,35 @@ impl UIManager {
                     }
                 }
             }
-            
+
             // Show the bar
             bar.show();
-            
+
             // Store the bar
             self.bars.insert(monitor_name.to_string(), bar);
         }
-        
-        println!("Created {} bars for monitors: {:?}", 
-            self.bars.len(), 
+
+        println!(
+            "Created {} bars for monitors: {:?}",
+            self.bars.len(),
             self.bars.keys().collect::<Vec<_>>()
         );
-        
+
         Ok(())
     }
-    
+
     /// Update the UI when configuration changes
     pub fn update_from_config(&mut self, config: &NiriBarConfig) -> Result<()> {
         self.create_bars_for_config(config)
     }
-    
+
     /// Get the number of active bars
     pub fn bar_count(&self) -> usize {
         self.bars.len()
     }
-    
+
     /// Get all monitor names with bars
     pub fn monitor_names(&self) -> Vec<String> {
         self.bars.keys().cloned().collect()
     }
 }
-
-

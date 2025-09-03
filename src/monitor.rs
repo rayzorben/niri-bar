@@ -1,8 +1,8 @@
 use crate::bar::Bar;
-use gtk4::prelude::*;
-use gtk4::{Application as GtkApplication};
-use gdk4::{Monitor as GdkMonitor};
 use crate::config::{ColumnSpec, ModuleConfig};
+use gdk4::Monitor as GdkMonitor;
+use gtk4::Application as GtkApplication;
+use gtk4::prelude::*;
 use std::collections::HashMap;
 
 /// Monitor information and management
@@ -32,9 +32,14 @@ impl Monitor {
         app: &GtkApplication,
         theme: &str,
     ) -> Self {
-        log::info!("Monitor: Creating monitor: {} ({}x{}, scale={})", 
-            connector, logical_size.0, logical_size.1, scale_factor);
-        
+        log::info!(
+            "Monitor: Creating monitor: {} ({}x{}, scale={})",
+            connector,
+            logical_size.0,
+            logical_size.1,
+            scale_factor
+        );
+
         // Create monitor info
         let info = MonitorInfo {
             connector: connector.clone(),
@@ -43,12 +48,12 @@ impl Monitor {
             logical_size,
             scale_factor,
         };
-        
+
         // Create the bar for this monitor
         let bar = Bar::new(&info, &gdk_monitor, app, theme);
-        
+
         log::info!("Monitor: ✅ Monitor '{}' created with bar", connector);
-        
+
         Self {
             info,
             gdk_monitor,
@@ -125,7 +130,11 @@ impl Monitor {
     /// Update the theme for this monitor's bar
     pub fn update_theme(&mut self, theme: &str) {
         if let Some(bar) = &mut self.bar {
-            log::info!("Monitor: Updating theme for monitor {} to '{}'", self.info.connector, theme);
+            log::info!(
+                "Monitor: Updating theme for monitor {} to '{}'",
+                self.info.connector,
+                theme
+            );
             bar.update_theme(theme);
         }
     }
@@ -133,15 +142,28 @@ impl Monitor {
     /// Update layout columns by names (ordered)
     pub fn update_columns(&mut self, column_names: &[String]) {
         if let Some(bar) = &mut self.bar {
-            log::debug!("Monitor: Updating columns for {}: {:?}", self.info.connector, column_names);
+            log::debug!(
+                "Monitor: Updating columns for {}: {:?}",
+                self.info.connector,
+                column_names
+            );
             bar.update_layout_columns_by_names(column_names);
         }
     }
 
     /// Update layout columns with full specs (name + modules + overflow)
-    pub fn update_columns_with_specs(&mut self, columns: &[(String, ColumnSpec)], module_formats: &HashMap<String, String>, module_configs: &HashMap<String, ModuleConfig>) {
+    pub fn update_columns_with_specs(
+        &mut self,
+        columns: &[(String, ColumnSpec)],
+        module_formats: &HashMap<String, String>,
+        module_configs: &HashMap<String, ModuleConfig>,
+    ) {
         if let Some(bar) = &mut self.bar {
-            log::debug!("Monitor: Updating column specs for {}: {} columns", self.info.connector, columns.len());
+            log::debug!(
+                "Monitor: Updating column specs for {}: {} columns",
+                self.info.connector,
+                columns.len()
+            );
             bar.update_layout_columns(columns, module_formats, module_configs);
         }
     }
@@ -154,7 +176,10 @@ impl Monitor {
     /// Destroy the bar for this monitor
     pub fn destroy_bar(&mut self) {
         if let Some(bar) = &mut self.bar {
-            log::info!("Monitor: Destroying bar for monitor: {}", self.info.connector);
+            log::info!(
+                "Monitor: Destroying bar for monitor: {}",
+                self.info.connector
+            );
             bar.destroy();
             self.bar = None;
         }
@@ -165,8 +190,11 @@ impl Monitor {
         log::debug!("Monitor: Monitor: {}", self.info.connector);
         log::debug!("Monitor:   Manufacturer: {:?}", self.info.manufacturer);
         log::debug!("Monitor:   Model: {:?}", self.info.model);
-        log::debug!("Monitor:   Logical size: {}x{}", 
-            self.info.logical_size.0, self.info.logical_size.1);
+        log::debug!(
+            "Monitor:   Logical size: {}x{}",
+            self.info.logical_size.0,
+            self.info.logical_size.1
+        );
         log::debug!("Monitor:   Scale factor: {}", self.info.scale_factor);
         log::debug!("Monitor:   Has bar: {}", self.has_bar());
     }
@@ -189,5 +217,3 @@ impl PartialEq for Monitor {
 }
 
 impl Eq for Monitor {}
-
-

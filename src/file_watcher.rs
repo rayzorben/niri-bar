@@ -1,8 +1,7 @@
+use anyhow::Result;
+use notify::{Event, RecursiveMode, Watcher};
 use std::path::PathBuf;
 use tokio::sync::watch;
-use notify::{Watcher, RecursiveMode, Event};
-use anyhow::Result;
-
 
 /// Callback function type for file events
 pub type FileEventCallback = Box<dyn Fn(PathBuf, Vec<u8>) + Send + Sync>;
@@ -35,18 +34,18 @@ impl FileWatcher {
     /// Create a new file watcher with default search paths
     pub fn new<P: Into<String>>(filename: P) -> Self {
         let filename = filename.into();
-        
+
         // Default search paths: ~/.config/niri-bar and current directory
         let mut search_paths = Vec::new();
-        
+
         // Add ~/.config/niri-bar
         if let Some(home) = dirs::home_dir() {
             search_paths.push(home.join(".config").join("niri-bar"));
         }
-        
+
         // Add current directory
         search_paths.push(PathBuf::from("."));
-        
+
         Self {
             filename,
             search_paths,
@@ -59,10 +58,13 @@ impl FileWatcher {
     }
 
     /// Create a new file watcher with custom search paths
-    pub fn with_search_paths<P: Into<String>, Q: Into<PathBuf>>(filename: P, search_paths: Vec<Q>) -> Self {
+    pub fn with_search_paths<P: Into<String>, Q: Into<PathBuf>>(
+        filename: P,
+        search_paths: Vec<Q>,
+    ) -> Self {
         let filename = filename.into();
         let search_paths: Vec<PathBuf> = search_paths.into_iter().map(|p| p.into()).collect();
-        
+
         Self {
             filename,
             search_paths,
@@ -86,36 +88,36 @@ impl FileWatcher {
     }
 
     /// Set callback for when file is initially loaded
-    pub fn on_load<F>(mut self, callback: F) -> Self 
-    where 
-        F: Fn(PathBuf, Vec<u8>) + Send + Sync + 'static 
+    pub fn on_load<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(PathBuf, Vec<u8>) + Send + Sync + 'static,
     {
         self.on_load = Some(Box::new(callback));
         self
     }
 
     /// Set callback for when file is modified
-    pub fn on_change<F>(mut self, callback: F) -> Self 
-    where 
-        F: Fn(PathBuf, Vec<u8>) + Send + Sync + 'static 
+    pub fn on_change<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(PathBuf, Vec<u8>) + Send + Sync + 'static,
     {
         self.on_change = Some(Box::new(callback));
         self
     }
 
     /// Set callback for when file is deleted
-    pub fn on_delete<F>(mut self, callback: F) -> Self 
-    where 
-        F: Fn(PathBuf) + Send + Sync + 'static 
+    pub fn on_delete<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(PathBuf) + Send + Sync + 'static,
     {
         self.on_delete = Some(Box::new(callback));
         self
     }
 
     /// Set callback for when an error occurs
-    pub fn on_error<F>(mut self, callback: F) -> Self 
-    where 
-        F: Fn(PathBuf, String) + Send + Sync + 'static 
+    pub fn on_error<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(PathBuf, String) + Send + Sync + 'static,
     {
         self.on_error = Some(Box::new(callback));
         self
@@ -130,7 +132,10 @@ impl FileWatcher {
         } else {
             // File not found in any search path
             if let Some(callback) = &self.on_error {
-                callback(PathBuf::from(&self.filename), format!("File '{}' not found in any search path", self.filename));
+                callback(
+                    PathBuf::from(&self.filename),
+                    format!("File '{}' not found in any search path", self.filename),
+                );
             }
         }
         Ok(())
@@ -141,11 +146,15 @@ impl FileWatcher {
         // Find the actual file path
         if let Some(file_path) = self.find_file().await? {
             self.actual_path = Some(file_path.clone());
-            self.start_watching_file_with_timeout(file_path, timeout).await?;
+            self.start_watching_file_with_timeout(file_path, timeout)
+                .await?;
         } else {
             // File not found in any search path
             if let Some(callback) = &self.on_error {
-                callback(PathBuf::from(&self.filename), format!("File '{}' not found in any search path", self.filename));
+                callback(
+                    PathBuf::from(&self.filename),
+                    format!("File '{}' not found in any search path", self.filename),
+                );
             }
         }
         Ok(())
@@ -155,28 +164,27 @@ impl FileWatcher {
     async fn start_watching_file(&mut self, file_path: PathBuf) -> Result<()> {
         // Load the file initially
         self.load_file(&file_path).await?;
-        
+
         // Set up file watcher with proper configuration
         let path = file_path.clone();
         let on_change = self.on_change.take();
         let on_error = self.on_error.take();
-        
+
         tokio::spawn(async move {
             let (tx, mut rx) = watch::channel(());
-            
-            let mut watcher = notify::recommended_watcher(
-                move |res| {
-                    if let Ok(Event { .. }) = res {
-                        let _ = tx.send(());
-                    }
-                },
-            ).unwrap();
+
+            let mut watcher = notify::recommended_watcher(move |res| {
+                if let Ok(Event { .. }) = res {
+                    let _ = tx.send(());
+                }
+            })
+            .unwrap();
 
             // Watch the file's parent directory for changes
             if let Some(parent) = path.parent() {
                 watcher.watch(parent, RecursiveMode::NonRecursive).unwrap();
             }
-            
+
             // Process events
             while rx.changed().await.is_ok() {
                 if let Ok(content) = tokio::fs::read(&path).await {
@@ -188,37 +196,40 @@ impl FileWatcher {
                 }
             }
         });
-        
+
         // Return immediately - the spawned task will continue running
         Ok(())
     }
 
     /// Start watching a specific file path with timeout
-    async fn start_watching_file_with_timeout(&mut self, file_path: PathBuf, timeout: std::time::Duration) -> Result<()> {
+    async fn start_watching_file_with_timeout(
+        &mut self,
+        file_path: PathBuf,
+        timeout: std::time::Duration,
+    ) -> Result<()> {
         // Load the file initially
         self.load_file(&file_path).await?;
-        
+
         // Set up file watcher with proper configuration
         let path = file_path.clone();
         let on_change = self.on_change.take();
         let on_error = self.on_error.take();
-        
+
         let handle = tokio::spawn(async move {
             let (tx, mut rx) = watch::channel(());
-            
-            let mut watcher = notify::recommended_watcher(
-                move |res| {
-                    if let Ok(Event { .. }) = res {
-                        let _ = tx.send(());
-                    }
-                },
-            ).unwrap();
+
+            let mut watcher = notify::recommended_watcher(move |res| {
+                if let Ok(Event { .. }) = res {
+                    let _ = tx.send(());
+                }
+            })
+            .unwrap();
 
             // Watch the file's parent directory for changes
             if let Some(parent) = path.parent() {
                 watcher.watch(parent, RecursiveMode::NonRecursive).unwrap();
             }
-            
+
             // Process events with timeout
             tokio::select! {
                 _ = async {
@@ -237,7 +248,7 @@ impl FileWatcher {
                 }
             }
         });
-        
+
         // Wait for the watcher task to complete
         let _ = handle.await;
         Ok(())

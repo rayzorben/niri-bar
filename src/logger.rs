@@ -38,17 +38,14 @@ impl NiriBarLogger {
         let file_handle = if !config.file.is_empty() {
             let expanded_path = shellexpand::tilde(&config.file).to_string();
             let path = Path::new(&expanded_path);
-            
+
             // Create directory if it doesn't exist
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            
-            let file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path)?;
-            
+
+            let file = OpenOptions::new().create(true).append(true).open(path)?;
+
             Some(Arc::new(Mutex::new(file)))
         } else {
             None
@@ -93,11 +90,11 @@ impl NiriBarLogger {
             "error" => LevelFilter::Error,
             _ => LevelFilter::Info,
         };
-        
+
         let logger = Self::new(config)?;
         log::set_boxed_logger(Box::new(logger))?;
         log::set_max_level(level_filter);
-        
+
         Ok(())
     }
 
@@ -111,11 +108,8 @@ impl NiriBarLogger {
         };
 
         let level_str = record.level().to_string().to_uppercase();
-        
-        let mut parts = vec![
-            format!("[{}]", timestamp_str),
-            format!("[{}]", level_str),
-        ];
+
+        let mut parts = vec![format!("[{}]", timestamp_str), format!("[{}]", level_str)];
 
         // Add class information if enabled
         if self.config.include_class {
@@ -128,15 +122,19 @@ impl NiriBarLogger {
         // Add file and line information if enabled
         if self.config.include_file || self.config.include_line {
             let mut location_parts = Vec::new();
-            
-            if self.config.include_file && let Some(file) = record.file() {
+
+            if self.config.include_file
+                && let Some(file) = record.file()
+            {
                 location_parts.push(file.to_string());
             }
-            
-            if self.config.include_line && let Some(line) = record.line() {
+
+            if self.config.include_line
+                && let Some(line) = record.line()
+            {
                 location_parts.push(line.to_string());
             }
-            
+
             if !location_parts.is_empty() {
                 parts.push(format!("[{}]", location_parts.join(":")));
             }
@@ -159,7 +157,8 @@ impl NiriBarLogger {
 
         // Write to file if configured
         if let Some(file_handle) = &self.file_handle
-            && let Ok(mut file) = file_handle.lock() {
+            && let Ok(mut file) = file_handle.lock()
+        {
             file.write_all(message_with_newline.as_bytes())?;
             file.flush()?;
         }
@@ -178,14 +177,14 @@ impl Log for NiriBarLogger {
             "error" => LevelFilter::Error,
             _ => LevelFilter::Info,
         };
-        
+
         metadata.level() <= level_filter
     }
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             let message = self.format_message(record);
-            
+
             // Use stderr for errors, stdout for everything else
             if record.level() == Level::Error {
                 let _ = io::stderr().write_all(format!("{}\n", message).as_bytes());
@@ -198,13 +197,14 @@ impl Log for NiriBarLogger {
     fn flush(&self) {
         // Flush stdout
         let _ = io::stdout().flush();
-        
+
         // Flush stderr
         let _ = io::stderr().flush();
-        
+
         // Flush file if open
         if let Some(file_handle) = &self.file_handle
-            && let Ok(mut file) = file_handle.lock() {
+            && let Ok(mut file) = file_handle.lock()
+        {
             let _ = file.flush();
         }
     }
@@ -238,5 +238,3 @@ macro_rules! log_error {
         log::error!(target: $class, $($arg)*);
     };
 }
-
-

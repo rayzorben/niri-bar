@@ -41,5 +41,3 @@ impl WindowTitleModule {
         label.upcast()
     }
 }
-
-

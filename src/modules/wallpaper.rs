@@ -1,7 +1,7 @@
 use gtk4 as gtk;
 use gtk4::prelude::*;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::config::ModuleConfig;
 use crate::niri::niri_bus;
@@ -41,7 +41,9 @@ impl WallpaperModule {
                         }
                         cur = widget.parent();
                         hops += 1;
-                        if hops > 8 { break; }
+                        if hops > 8 {
+                            break;
+                        }
                     }
                 }
                 gtk::glib::ControlFlow::Break
@@ -56,11 +58,22 @@ impl WallpaperModule {
         let last_applied_clone = last_applied.clone();
         gtk::glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
             if container_weak.upgrade().is_some() {
-                if let Some(focused) = niri_bus().workspaces_snapshot().into_iter().find(|w| w.is_focused) {
+                if let Some(focused) = niri_bus()
+                    .workspaces_snapshot()
+                    .into_iter()
+                    .find(|w| w.is_focused)
+                {
                     let key_idx = focused.idx.to_string();
                     let key_name = focused.name.clone().unwrap_or_default();
-                    let target = map_wp.get(&key_idx)
-                        .or_else(|| if key_name.is_empty() { None } else { map_wp.get(&key_name) })
+                    let target = map_wp
+                        .get(&key_idx)
+                        .or_else(|| {
+                            if key_name.is_empty() {
+                                None
+                            } else {
+                                map_wp.get(&key_name)
+                            }
+                        })
                         .cloned()
                         .or(default_wp.clone());
                     if let Some(img) = target {
@@ -74,8 +87,17 @@ impl WallpaperModule {
                         };
                         if should_apply {
                             let out = monitor_conn.borrow().clone();
-                            log::info!("WallpaperModule: 🎯 Switching to workspace {} -> {}", focused.idx, img);
-                            Self::apply_wallpaper_command(&special_cmd, swww_opts.as_ref(), &img, out.as_deref());
+                            log::info!(
+                                "WallpaperModule: 🎯 Switching to workspace {} -> {}",
+                                focused.idx,
+                                img
+                            );
+                            Self::apply_wallpaper_command(
+                                &special_cmd,
+                                swww_opts.as_ref(),
+                                &img,
+                                out.as_deref(),
+                            );
                             *last_applied_clone.borrow_mut() = Some((focused.id, img));
                         }
                     }
@@ -89,11 +111,21 @@ impl WallpaperModule {
         container.upcast()
     }
 
-    fn apply_wallpaper_command(special_cmd: &Option<String>, swww_opts: Option<&crate::config::SwwwOptions>, image_path: &str, output: Option<&str>) {
-        log::info!("WallpaperModule: 🚀 Applying wallpaper: {} (output: {:?})", image_path, output);
+    fn apply_wallpaper_command(
+        special_cmd: &Option<String>,
+        swww_opts: Option<&crate::config::SwwwOptions>,
+        image_path: &str,
+        output: Option<&str>,
+    ) {
+        log::info!(
+            "WallpaperModule: 🚀 Applying wallpaper: {} (output: {:?})",
+            image_path,
+            output
+        );
         fn expand_tilde(path: &str) -> String {
             if let Some(stripped) = path.strip_prefix("~/")
-                && let Some(home) = std::env::var_os("HOME") {
+                && let Some(home) = std::env::var_os("HOME")
+            {
                 format!("{}/{}", home.to_string_lossy(), stripped)
             } else {
                 path.to_string()
@@ -102,13 +134,20 @@ impl WallpaperModule {
 
         let img_expanded = expand_tilde(image_path);
         if !std::path::Path::new(&img_expanded).exists() {
-            log::warn!("WallpaperModule: path missing: {} (from {})", img_expanded, image_path);
+            log::warn!(
+                "WallpaperModule: path missing: {} (from {})",
+                img_expanded,
+                image_path
+            );
             return;
         }
 
         if let Some(cmd) = special_cmd {
             let prepared = cmd.replace("${current_workspace_image}", &img_expanded);
-            let _ = std::process::Command::new("sh").arg("-c").arg(prepared).spawn();
+            let _ = std::process::Command::new("sh")
+                .arg("-c")
+                .arg(prepared)
+                .spawn();
             return;
         }
 
@@ -134,10 +173,13 @@ impl WallpaperModule {
             if let Some(opts) = swww_opts {
                 cmd.arg("--transition-type").arg(&opts.transition_type);
                 if !matches!(opts.transition_type.as_str(), "simple" | "none") {
-                    cmd.arg("--transition-duration").arg(format!("{}", opts.transition_duration));
+                    cmd.arg("--transition-duration")
+                        .arg(format!("{}", opts.transition_duration));
                 }
-                cmd.arg("--transition-step").arg(format!("{}", opts.transition_step));
-                cmd.arg("--transition-fps").arg(format!("{}", opts.transition_fps));
+                cmd.arg("--transition-step")
+                    .arg(format!("{}", opts.transition_step));
+                cmd.arg("--transition-fps")
+                    .arg(format!("{}", opts.transition_fps));
                 cmd.arg("--filter").arg(&opts.filter);
                 cmd.arg("--resize").arg(&opts.resize);
                 cmd.arg("--fill-color").arg(&opts.fill_color);
@@ -165,10 +207,10 @@ fn find_in_path(cmd: &str) -> Option<String> {
     if let Some(paths) = env::var_os("PATH") {
         for p in env::split_paths(&paths) {
             let cand = p.join(cmd);
-            if cand.exists() { return cand.to_str().map(|s| s.to_string()); }
+            if cand.exists() {
+                return cand.to_str().map(|s| s.to_string());
+            }
         }
     }
     None
 }
-
-

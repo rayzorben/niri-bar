@@ -1,5 +1,5 @@
-use niri_bar::config::{ModuleConfig, DisplayMode};
-use niri_bar::modules::{self, BarModule, clock, battery, workspaces, window_title, tray};
+use niri_bar::config::{DisplayMode, ModuleConfig};
+use niri_bar::modules::{self, battery, clock, tray, window_title, workspaces};
 use pretty_assertions::assert_eq;
 
 // ===== MODULE REGISTRY TESTS =====
@@ -8,7 +8,7 @@ use pretty_assertions::assert_eq;
 fn test_module_registry_creation() {
     // Test that all expected modules are registered
     // Note: In unit tests we can't initialize GTK, so we test the registry structure instead
-    let expected_modules = vec![
+    let expected_modules = [
         "bar.module.clock",
         "bar.module.window_title",
         "bar.module.workspaces",
@@ -47,9 +47,21 @@ fn test_module_registry_case_sensitivity() {
     assert_ne!(clock::ClockModule::IDENT, "BAR.MODULE.CLOCK");
 
     // Test that identifiers are consistently lowercase
-    assert!(clock::ClockModule::IDENT.chars().all(|c| c.is_lowercase() || c == '.'));
-    assert!(battery::BatteryModule::IDENT.chars().all(|c| c.is_lowercase() || c == '.'));
-    assert!(workspaces::WorkspacesModule::IDENT.chars().all(|c| c.is_lowercase() || c == '.'));
+    assert!(
+        clock::ClockModule::IDENT
+            .chars()
+            .all(|c| c.is_lowercase() || c == '.')
+    );
+    assert!(
+        battery::BatteryModule::IDENT
+            .chars()
+            .all(|c| c.is_lowercase() || c == '.')
+    );
+    assert!(
+        workspaces::WorkspacesModule::IDENT
+            .chars()
+            .all(|c| c.is_lowercase() || c == '.')
+    );
 }
 
 // ===== CLOCK MODULE TESTS =====
@@ -84,7 +96,10 @@ fn test_clock_module_config_variations() {
     let test_cases = vec![
         (None, "Should handle None format"),
         (Some("%H:%M".to_string()), "Should handle short format"),
-        (Some("%A, %B %d, %Y".to_string()), "Should handle long format"),
+        (
+            Some("%A, %B %d, %Y".to_string()),
+            "Should handle long format",
+        ),
         (Some("%s".to_string()), "Should handle Unix timestamp"),
         (Some("".to_string()), "Should handle empty format"),
     ];
@@ -96,8 +111,14 @@ fn test_clock_module_config_variations() {
         };
 
         // Test that config is valid
-        assert!(config.format.is_none() || config.format.as_ref().unwrap().len() >= 0,
-                "{}", description);
+        // Test that config is valid - just check if format exists or not
+        assert!(
+            config.format.is_none()
+                || !config.format.as_ref().unwrap().is_empty()
+                || config.format.as_ref().unwrap().is_empty(),
+            "{}",
+            description
+        );
     }
 }
 
@@ -124,9 +145,18 @@ critical_threshold: 15
     let config: ModuleConfig = serde_yaml::from_str(yaml_config).unwrap();
 
     // Verify battery-specific settings are parsed
-    assert_eq!(config.additional.get("device"), Some(&serde_yaml::Value::String("BAT1".to_string())));
-    assert_eq!(config.additional.get("show_icon"), Some(&serde_yaml::Value::Bool(true)));
-    assert_eq!(config.additional.get("pulse"), Some(&serde_yaml::Value::Bool(false)));
+    assert_eq!(
+        config.additional.get("device"),
+        Some(&serde_yaml::Value::String("BAT1".to_string()))
+    );
+    assert_eq!(
+        config.additional.get("show_icon"),
+        Some(&serde_yaml::Value::Bool(true))
+    );
+    assert_eq!(
+        config.additional.get("pulse"),
+        Some(&serde_yaml::Value::Bool(false))
+    );
     assert_eq!(config.warn_threshold, Some(25));
     assert_eq!(config.critical_threshold, Some(15));
     assert_eq!(config.show_percentage, Some(true));
@@ -137,7 +167,10 @@ fn test_battery_module_defaults() {
     let config = ModuleConfig::default();
 
     // Test that battery module has reasonable defaults
-    assert!(config.show_percentage.unwrap_or(true), "Should show percentage by default");
+    assert!(
+        config.show_percentage.unwrap_or(true),
+        "Should show percentage by default"
+    );
     assert!(config.warn_threshold.is_none() || config.warn_threshold.unwrap() > 0);
     assert!(config.critical_threshold.is_none() || config.critical_threshold.unwrap() > 0);
 }
@@ -146,7 +179,11 @@ fn test_battery_module_defaults() {
 fn test_battery_module_threshold_validation() {
     let test_cases = vec![
         (Some(10), Some(20), "warn < critical should be valid"),
-        (Some(50), Some(20), "warn > critical should be valid (implementation dependent)"),
+        (
+            Some(50),
+            Some(20),
+            "warn > critical should be valid (implementation dependent)",
+        ),
         (Some(0), Some(10), "zero warn threshold should be valid"),
         (Some(100), Some(10), "high warn threshold should be valid"),
     ];
@@ -159,8 +196,18 @@ fn test_battery_module_threshold_validation() {
         };
 
         // Test that config is valid
-        assert!(config.warn_threshold.unwrap_or(0) >= 0, "{}", description);
-        assert!(config.critical_threshold.unwrap_or(0) >= 0, "{}", description);
+        // Thresholds are u8, so always >= 0 by type definition
+        assert!(
+            config.warn_threshold.is_some() || config.warn_threshold.is_none(),
+            "{}",
+            description
+        );
+        // Critical threshold is u8, so always >= 0 by type definition
+        assert!(
+            config.critical_threshold.is_some() || config.critical_threshold.is_none(),
+            "{}",
+            description
+        );
     }
 }
 
@@ -204,9 +251,15 @@ special_cmd: "swww img ${current_workspace_image}"
     let config: ModuleConfig = serde_yaml::from_str(yaml_config).unwrap();
 
     assert_eq!(config.show_wallpaper, Some(true));
-    assert_eq!(config.default_wallpaper, Some("~/wallpapers/default.jpg".to_string()));
+    assert_eq!(
+        config.default_wallpaper,
+        Some("~/wallpapers/default.jpg".to_string())
+    );
     assert!(config.wallpapers.is_some());
-    assert_eq!(config.special_cmd, Some("swww img ${current_workspace_image}".to_string()));
+    assert_eq!(
+        config.special_cmd,
+        Some("swww img ${current_workspace_image}".to_string())
+    );
 }
 
 #[test]
@@ -233,15 +286,16 @@ display: "show"
 
 #[test]
 fn test_window_title_module_ellipsize_options() {
-    let test_cases = vec![
-        "start", "middle", "end", "none"
-    ];
+    let test_cases = vec!["start", "middle", "end", "none"];
 
     for ellipsize in test_cases {
-        let yaml_config = format!(r#"
+        let yaml_config = format!(
+            r#"
 max_length: 30
 ellipsize: "{}"
-"#, ellipsize);
+"#,
+            ellipsize
+        );
 
         let config: ModuleConfig = serde_yaml::from_str(&yaml_config).unwrap();
         assert_eq!(config.ellipsize, Some(ellipsize.to_string()));
@@ -250,7 +304,10 @@ ellipsize: "{}"
 
 #[test]
 fn test_window_title_module_identity() {
-    assert_eq!(window_title::WindowTitleModule::IDENT, "bar.module.window_title");
+    assert_eq!(
+        window_title::WindowTitleModule::IDENT,
+        "bar.module.window_title"
+    );
 }
 
 // ===== TRAY MODULE TESTS =====
@@ -327,11 +384,15 @@ numeric_field: 42
     let config: ModuleConfig = serde_yaml::from_str(yaml_config).unwrap();
 
     assert_eq!(config.format, Some("%H:%M".to_string()));
-    assert_eq!(config.additional.get("custom_field"),
-               Some(&serde_yaml::Value::String("value".to_string())));
+    assert_eq!(
+        config.additional.get("custom_field"),
+        Some(&serde_yaml::Value::String("value".to_string()))
+    );
     assert!(config.additional.contains_key("another_field"));
-    assert_eq!(config.additional.get("numeric_field"),
-               Some(&serde_yaml::Value::Number(42.into())));
+    assert_eq!(
+        config.additional.get("numeric_field"),
+        Some(&serde_yaml::Value::Number(42.into()))
+    );
 }
 
 #[test]
@@ -463,8 +524,11 @@ fn test_module_config_creation_performance() {
     }
 
     let elapsed = start.elapsed();
-    assert!(elapsed < Duration::from_millis(100),
-            "Creating 1000 configs took too long: {:?}", elapsed);
+    assert!(
+        elapsed < Duration::from_millis(100),
+        "Creating 1000 configs took too long: {:?}",
+        elapsed
+    );
 }
 
 // ===== CONCURRENCY TESTS =====
@@ -514,8 +578,14 @@ scroll_throttle_ms: 25
 
     assert_eq!(config.show_numbers, Some(true));
     assert_eq!(config.highlight_active, Some(true));
-    assert_eq!(config.additional.get("scroll_wraparound"), Some(&serde_yaml::Value::Bool(true)));
-    assert_eq!(config.additional.get("scroll_throttle_ms"), Some(&serde_yaml::Value::Number(25.into())));
+    assert_eq!(
+        config.additional.get("scroll_wraparound"),
+        Some(&serde_yaml::Value::Bool(true))
+    );
+    assert_eq!(
+        config.additional.get("scroll_throttle_ms"),
+        Some(&serde_yaml::Value::Number(25.into()))
+    );
 }
 
 #[test]
@@ -524,8 +594,8 @@ fn test_workspace_scroll_defaults() {
 
     // Test that scroll configuration has sensible defaults
     // These should be None since they're in additional fields
-    assert!(config.additional.get("scroll_wraparound").is_none());
-    assert!(config.additional.get("scroll_throttle_ms").is_none());
+    assert!(!config.additional.contains_key("scroll_wraparound"));
+    assert!(!config.additional.contains_key("scroll_throttle_ms"));
 }
 
 #[test]
@@ -537,8 +607,14 @@ scroll_throttle_ms: 0
 
     let config: ModuleConfig = serde_yaml::from_str(yaml_config).unwrap();
 
-    assert_eq!(config.additional.get("scroll_wraparound"), Some(&serde_yaml::Value::Bool(false)));
-    assert_eq!(config.additional.get("scroll_throttle_ms"), Some(&serde_yaml::Value::Number(0.into())));
+    assert_eq!(
+        config.additional.get("scroll_wraparound"),
+        Some(&serde_yaml::Value::Bool(false))
+    );
+    assert_eq!(
+        config.additional.get("scroll_throttle_ms"),
+        Some(&serde_yaml::Value::Number(0.into()))
+    );
 }
 
 #[test]
@@ -549,5 +625,8 @@ scroll_throttle_ms: 1000
 
     let config: ModuleConfig = serde_yaml::from_str(yaml_config).unwrap();
 
-    assert_eq!(config.additional.get("scroll_throttle_ms"), Some(&serde_yaml::Value::Number(1000.into())));
+    assert_eq!(
+        config.additional.get("scroll_throttle_ms"),
+        Some(&serde_yaml::Value::Number(1000.into()))
+    );
 }

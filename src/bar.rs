@@ -1,13 +1,13 @@
 // Re-export MonitorInfo for use in tests
+use crate::config::{ColumnOverflowPolicy, ColumnSpec, DisplayMode, ModuleConfig, TextAlign};
+use crate::modules::create_module_widget;
 pub use crate::monitor::MonitorInfo;
-use gtk4::prelude::*;
-use gtk4::{Application as GtkApplication, ApplicationWindow, CssProvider};
-use gtk4_layer_shell::{LayerShell, Layer, Edge};
 use gdk4::{Display, Monitor as GdkMonitor};
 use gtk4 as gtk;
-use gtk4::{MenuButton, Popover, ListBox};
-use crate::config::{ColumnSpec, ColumnOverflowPolicy, TextAlign, DisplayMode, ModuleConfig};
-use crate::modules::create_module_widget;
+use gtk4::prelude::*;
+use gtk4::{Application as GtkApplication, ApplicationWindow, CssProvider};
+use gtk4::{ListBox, MenuButton, Popover};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use std::collections::HashMap;
 
 /// Bar class that manages a single status bar for a monitor
@@ -27,14 +27,20 @@ impl Bar {
         app: &GtkApplication,
         theme: &str,
     ) -> Self {
-        log::info!("Bar: 🎯 Creating bar for monitor: {}", monitor_info.connector);
-        
+        log::info!(
+            "Bar: 🎯 Creating bar for monitor: {}",
+            monitor_info.connector
+        );
+
         // Create the window
         let window = ApplicationWindow::new(app);
-        
+
         // Set monitor-specific CSS class
-        window.add_css_class(&format!("monitor-{}", monitor_info.connector.replace("-", "_")));
-        
+        window.add_css_class(&format!(
+            "monitor-{}",
+            monitor_info.connector.replace("-", "_")
+        ));
+
         // Initialize layer shell
         window.init_layer_shell();
         window.set_layer(Layer::Top);
@@ -42,18 +48,18 @@ impl Bar {
         window.set_anchor(Edge::Top, true);
         window.set_anchor(Edge::Left, true);
         window.set_anchor(Edge::Right, true);
-        
+
         // Pin to specific monitor
         window.set_monitor(Some(gdk_monitor));
-        
+
         // Set bar height
         window.set_default_height(40);
-        
+
         // Load and apply CSS theme
         let css_provider = CssProvider::new();
         let css_content = Self::load_theme_css(theme);
         css_provider.load_from_data(&css_content);
-        
+
         // Apply CSS to the display
         if let Some(display) = Display::default() {
             gtk::style_context_add_provider_for_display(
@@ -62,7 +68,7 @@ impl Bar {
                 gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
         }
-        
+
         // Create main container for columns
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         // Equal-width columns across the bar
@@ -70,16 +76,20 @@ impl Bar {
         container.set_hexpand(true);
         container.set_halign(gtk::Align::Fill);
         container.add_css_class("bar-columns");
-        container.add_css_class(&format!("monitor-{}", monitor_info.connector.replace("-", "_")));
+        container.add_css_class(&format!(
+            "monitor-{}",
+            monitor_info.connector.replace("-", "_")
+        ));
         window.set_child(Some(&container));
-        
-        log::info!("Bar: ✅ Bar created and pinned to monitor: {} ({}x{}, scale={})", 
-            monitor_info.connector, 
-            monitor_info.logical_size.0, 
+
+        log::info!(
+            "Bar: ✅ Bar created and pinned to monitor: {} ({}x{}, scale={})",
+            monitor_info.connector,
+            monitor_info.logical_size.0,
             monitor_info.logical_size.1,
             monitor_info.scale_factor
         );
-        
+
         Self {
             window,
             container,
@@ -103,7 +113,8 @@ impl Bar {
             }
             Err(e) => {
                 log::warn!("Bar: Failed to load base.css: {}, using fallback", e);
-                css_content.push_str(r#"
+                css_content.push_str(
+                    r#"
                 window {
                     background-color: transparent;
                     border: none;
@@ -118,7 +129,8 @@ impl Bar {
                     padding: 0 6px;
                     background: transparent;
                 }
-                "#);
+                "#,
+                );
             }
         }
 
@@ -130,9 +142,14 @@ impl Bar {
                 log::info!("Bar: Loaded CSS theme: {}", theme);
             }
             Err(e) => {
-                log::warn!("Bar: Failed to load theme '{}': {}, using defaults", theme, e);
+                log::warn!(
+                    "Bar: Failed to load theme '{}': {}, using defaults",
+                    theme,
+                    e
+                );
                 // Add default theme variables
-                css_content.push_str(r#"
+                css_content.push_str(
+                    r#"
                 :root {
                     --bg-transparent: transparent;
                     --text-primary: #f6f3e8;
@@ -154,7 +171,8 @@ impl Bar {
                     --warning-color: #f4bf75;
                     --critical-color: #e5786d;
                 }
-                "#);
+                "#,
+                );
             }
         }
 
@@ -164,7 +182,10 @@ impl Bar {
     /// Show the bar
     pub fn show(&mut self) {
         if !self.is_visible {
-            log::info!("Bar: Showing bar for monitor: {}", self.monitor_info.connector);
+            log::info!(
+                "Bar: Showing bar for monitor: {}",
+                self.monitor_info.connector
+            );
             self.window.present();
             self.is_visible = true;
         }
@@ -173,7 +194,10 @@ impl Bar {
     /// Hide the bar
     pub fn hide(&mut self) {
         if self.is_visible {
-            log::info!("Bar: Hiding bar for monitor: {}", self.monitor_info.connector);
+            log::info!(
+                "Bar: Hiding bar for monitor: {}",
+                self.monitor_info.connector
+            );
             self.window.close();
             self.is_visible = false;
         }
@@ -181,18 +205,22 @@ impl Bar {
 
     /// Update the theme for this bar
     pub fn update_theme(&mut self, theme: &str) {
-        log::info!("Bar: Updating theme for monitor {} to '{}'", self.monitor_info.connector, theme);
-        
+        log::info!(
+            "Bar: Updating theme for monitor {} to '{}'",
+            self.monitor_info.connector,
+            theme
+        );
+
         // Remove old CSS provider from display
         if let Some(display) = Display::default() {
             gtk::style_context_remove_provider_for_display(&display, &self.css_provider);
         }
-        
+
         // Load new CSS theme
         let new_css_provider = CssProvider::new();
         let css_content = Self::load_theme_css(theme);
         new_css_provider.load_from_data(&css_content);
-        
+
         // Apply new CSS to the display
         if let Some(display) = Display::default() {
             gtk::style_context_add_provider_for_display(
@@ -201,15 +229,19 @@ impl Bar {
                 gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
         }
-        
+
         // Update the stored CSS provider
         self.css_provider = new_css_provider;
-        
+
         // Force a style update on the widgets
         self.window.queue_draw();
         self.container.queue_draw();
-        
-        log::info!("Bar: ✅ Theme updated to '{}' for monitor {}", theme, self.monitor_info.connector);
+
+        log::info!(
+            "Bar: ✅ Theme updated to '{}' for monitor {}",
+            theme,
+            self.monitor_info.connector
+        );
     }
 
     /// Update columns by names only (legacy)
@@ -253,7 +285,8 @@ impl Bar {
 
             // Approximate overflow check using monitor logical width divided by number of columns
             let available_w = (self.monitor_info.logical_size.0 / columns_count).max(1);
-            let (_min_w, nat_w, _min_h, _nat_h) = column_box.measure(gtk::Orientation::Horizontal, -1);
+            let (_min_w, nat_w, _min_h, _nat_h) =
+                column_box.measure(gtk::Orientation::Horizontal, -1);
             let is_overflowing = nat_w > available_w;
             kebab.set_visible(is_overflowing);
 
@@ -264,7 +297,12 @@ impl Bar {
     }
 
     /// Update columns from (name, ColumnSpec) pairs; applies overflow policy
-    pub fn update_layout_columns(&mut self, columns: &[(String, ColumnSpec)], module_formats: &HashMap<String, String>, module_configs: &HashMap<String, ModuleConfig>) {
+    pub fn update_layout_columns(
+        &mut self,
+        columns: &[(String, ColumnSpec)],
+        module_formats: &HashMap<String, String>,
+        module_configs: &HashMap<String, ModuleConfig>,
+    ) {
         // Clear existing content
         while let Some(child) = self.container.first_child() {
             self.container.remove(&child);
@@ -289,14 +327,11 @@ impl Bar {
             column_box.set_hexpand(true);
 
             // Determine effective text alignment for this column (column-level only)
-            let effective_align: TextAlign = spec
-                .align
-                .clone()
-                .unwrap_or(match name.as_str() {
-                    "center" => TextAlign::Center,
-                    "right" => TextAlign::Right,
-                    _ => TextAlign::Left,
-                });
+            let effective_align: TextAlign = spec.align.clone().unwrap_or(match name.as_str() {
+                "center" => TextAlign::Center,
+                "right" => TextAlign::Right,
+                _ => TextAlign::Left,
+            });
             column_box.add_css_class("column");
             column_box.add_css_class(&format!("column-{}", safe));
             match spec.overflow {
@@ -312,7 +347,11 @@ impl Bar {
 
                 // Check display property - skip hidden modules
                 if let Some(config) = module_config
-                    && matches!(config.display.as_ref().unwrap_or(&DisplayMode::Show), DisplayMode::Hide) {
+                    && matches!(
+                        config.display.as_ref().unwrap_or(&DisplayMode::Show),
+                        DisplayMode::Hide
+                    )
+                {
                     continue;
                 }
 
@@ -338,7 +377,9 @@ impl Bar {
                     net: module_config.and_then(|c| c.net),
                     enabled: module_config.and_then(|c| c.enabled),
                     display: module_config.and_then(|c| c.display.clone()),
-                    additional: module_config.map(|c| c.additional.clone()).unwrap_or_default(),
+                    additional: module_config
+                        .map(|c| c.additional.clone())
+                        .unwrap_or_default(),
                 };
 
                 if let Some(widget) = create_module_widget(module, &settings) {
@@ -369,13 +410,19 @@ impl Bar {
 
             // Place widgets; overflow extras into kebab popover list
             let available_w = (self.monitor_info.logical_size.0 / columns_count).max(1);
-            let (_k_min_w, kebab_nat_w, _k_min_h, _k_nat_h) = kebab.measure(gtk::Orientation::Horizontal, -1);
+            let (_k_min_w, kebab_nat_w, _k_min_h, _k_nat_h) =
+                kebab.measure(gtk::Orientation::Horizontal, -1);
             let mut used_w = 0;
             let mut overflowed: Vec<gtk::Widget> = Vec::new();
 
             for w in &module_widgets {
-                let (_m_min_w, m_nat_w, _m_min_h, _m_nat_h) = w.measure(gtk::Orientation::Horizontal, -1);
-                let budget = if matches!(spec.overflow, ColumnOverflowPolicy::Kebab) { available_w - kebab_nat_w } else { available_w };
+                let (_m_min_w, m_nat_w, _m_min_h, _m_nat_h) =
+                    w.measure(gtk::Orientation::Horizontal, -1);
+                let budget = if matches!(spec.overflow, ColumnOverflowPolicy::Kebab) {
+                    available_w - kebab_nat_w
+                } else {
+                    available_w
+                };
                 if used_w + m_nat_w <= budget {
                     used_w += m_nat_w;
                 } else {
@@ -457,7 +504,10 @@ impl Bar {
 
     /// Destroy the bar
     pub fn destroy(&mut self) {
-        log::info!("Bar: Destroying bar for monitor: {}", self.monitor_info.connector);
+        log::info!(
+            "Bar: Destroying bar for monitor: {}",
+            self.monitor_info.connector
+        );
         self.window.close();
         self.is_visible = false;
     }
@@ -479,28 +529,41 @@ impl Bar {
 
     /// Set the bar height
     pub fn set_height(&self, height: i32) {
-        log::debug!("Bar: Setting height for monitor {}: {}", 
-            self.monitor_info.connector, height);
+        log::debug!(
+            "Bar: Setting height for monitor {}: {}",
+            self.monitor_info.connector,
+            height
+        );
         self.window.set_default_height(height);
     }
 
     /// Set the bar width
     pub fn set_width(&self, width: i32) {
-        log::debug!("Bar: Setting width for monitor {}: {}", 
-            self.monitor_info.connector, width);
+        log::debug!(
+            "Bar: Setting width for monitor {}: {}",
+            self.monitor_info.connector,
+            width
+        );
         self.window.set_default_width(width);
     }
 
     /// Set the bar size
     pub fn set_size(&self, width: i32, height: i32) {
-        log::debug!("Bar: Setting size for monitor {}: {}x{}", 
-            self.monitor_info.connector, width, height);
+        log::debug!(
+            "Bar: Setting size for monitor {}: {}x{}",
+            self.monitor_info.connector,
+            width,
+            height
+        );
         self.window.set_default_size(width, height);
     }
 
     /// Update the bar with monitor information
     pub fn update_with_monitor_info(&mut self, monitor_info: &MonitorInfo) {
-        log::debug!("Bar: Updating bar with new monitor info for: {}", monitor_info.connector);
+        log::debug!(
+            "Bar: Updating bar with new monitor info for: {}",
+            monitor_info.connector
+        );
         self.monitor_info = monitor_info.clone();
         self.container.queue_draw();
     }
@@ -525,5 +588,3 @@ impl Bar {
         &self.monitor_info.connector
     }
 }
-
-

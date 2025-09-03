@@ -1,4 +1,4 @@
-use niri_bar::bar::{Bar, MonitorInfo};
+use niri_bar::bar::MonitorInfo;
 
 #[test]
 fn test_bar_creation() {
@@ -29,9 +29,9 @@ fn test_bar_content_formatting() {
 
     let expected_content = "Niri Bar - HDMI-A-1 (1920x1080, scale=1)";
     let actual_content = format!(
-        "Niri Bar - {} ({}x{}, scale={})", 
-        monitor_info.connector, 
-        monitor_info.logical_size.0, 
+        "Niri Bar - {} ({}x{}, scale={})",
+        monitor_info.connector,
+        monitor_info.logical_size.0,
         monitor_info.logical_size.1,
         monitor_info.scale_factor
     );

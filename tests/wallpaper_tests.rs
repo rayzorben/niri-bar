@@ -1,10 +1,10 @@
-use niri_bar::wallpaper::{WallpaperSwitcher, WallpaperCommandExecutor, DefaultWallpaperExecutor};
 use niri_bar::config::WallpaperConfig;
 use niri_bar::niri::WorkspaceInfo;
+use niri_bar::wallpaper::{DefaultWallpaperExecutor, WallpaperCommandExecutor, WallpaperSwitcher};
 use pretty_assertions::assert_eq;
 use std::collections::HashMap;
+
 use tempfile::NamedTempFile;
-use std::fs;
 
 /// Mock executor for testing wallpaper switching
 struct MockWallpaperExecutor {
@@ -35,7 +35,9 @@ impl MockWallpaperExecutor {
 
 impl WallpaperCommandExecutor for MockWallpaperExecutor {
     fn execute_command(&self, command: &str) -> Result<(), std::io::Error> {
-        self.executed_commands.borrow_mut().push(command.to_string());
+        self.executed_commands
+            .borrow_mut()
+            .push(command.to_string());
         Ok(())
     }
 
@@ -169,7 +171,7 @@ fn test_wallpaper_switcher_workspace_resolution_priority() {
 
     let mut by_workspace = HashMap::new();
     by_workspace.insert("test".to_string(), temp_path1.clone()); // Name match
-    by_workspace.insert("1".to_string(), temp_path2.clone());   // Index match
+    by_workspace.insert("1".to_string(), temp_path2.clone()); // Index match
     by_workspace.insert("fallback".to_string(), temp_path3.clone()); // No match
 
     let config = WallpaperConfig {
@@ -307,8 +309,11 @@ fn test_wallpaper_switcher_performance() {
     let duration = start.elapsed();
 
     // Should complete within reasonable time
-    assert!(duration < std::time::Duration::from_millis(500),
-            "10 wallpaper switches took too long: {:?}", duration);
+    assert!(
+        duration < std::time::Duration::from_millis(500),
+        "10 wallpaper switches took too long: {:?}",
+        duration
+    );
 }
 
 #[test]
@@ -323,7 +328,9 @@ fn test_wallpaper_switcher_thread_safety() {
         swww_options: None,
     };
 
-    let switcher = Arc::new(Mutex::new(WallpaperSwitcher::<DefaultWallpaperExecutor>::new_default_with_config(config)));
+    let switcher = Arc::new(Mutex::new(
+        WallpaperSwitcher::<DefaultWallpaperExecutor>::new_default_with_config(config),
+    ));
 
     let mut handles = vec![];
 

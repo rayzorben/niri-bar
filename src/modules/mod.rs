@@ -2,12 +2,12 @@ use gtk4 as gtk;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-pub mod clock;
-pub mod window_title;
-pub mod workspaces;
 pub mod battery;
+pub mod clock;
 pub mod tray;
 pub mod wallpaper;
+pub mod window_title;
+pub mod workspaces;
 
 /// Trait for all modules. Each module exposes an identifier and can create its widget.
 pub trait BarModule: Send + Sync {
@@ -23,11 +23,23 @@ static REGISTRY: Lazy<HashMap<&'static str, FactoryFn>> = Lazy::new(|| {
     let mut m: HashMap<&'static str, FactoryFn> = HashMap::new();
     // Register built-in modules
     m.insert(clock::ClockModule::IDENT, clock::ClockModule::create_widget);
-    m.insert(window_title::WindowTitleModule::IDENT, window_title::WindowTitleModule::create_widget);
-    m.insert(workspaces::WorkspacesModule::IDENT, workspaces::WorkspacesModule::create_widget);
-    m.insert(battery::BatteryModule::IDENT, battery::BatteryModule::create_widget);
+    m.insert(
+        window_title::WindowTitleModule::IDENT,
+        window_title::WindowTitleModule::create_widget,
+    );
+    m.insert(
+        workspaces::WorkspacesModule::IDENT,
+        workspaces::WorkspacesModule::create_widget,
+    );
+    m.insert(
+        battery::BatteryModule::IDENT,
+        battery::BatteryModule::create_widget,
+    );
     m.insert(tray::TrayModule::IDENT, tray::TrayModule::create_widget);
-    m.insert(wallpaper::WallpaperModule::IDENT, wallpaper::WallpaperModule::create_widget);
+    m.insert(
+        wallpaper::WallpaperModule::IDENT,
+        wallpaper::WallpaperModule::create_widget,
+    );
     m
 });
 
@@ -52,8 +64,12 @@ fn resolve_identifier(name: &str) -> String {
 ///     // In a real GTK environment, you would add this to a container
 /// }
 /// ```
-pub fn create_module_widget(module_name: &str, settings: &crate::config::ModuleConfig) -> Option<gtk::Widget> {
+pub fn create_module_widget(
+    module_name: &str,
+    settings: &crate::config::ModuleConfig,
+) -> Option<gtk::Widget> {
     let ident = resolve_identifier(module_name);
-    REGISTRY.get(ident.as_str()).map(|factory| factory(settings))
+    REGISTRY
+        .get(ident.as_str())
+        .map(|factory| factory(settings))
 }
-

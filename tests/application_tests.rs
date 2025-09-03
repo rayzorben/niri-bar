@@ -1,5 +1,5 @@
 use niri_bar::application::Application;
-use niri_bar::config::{LoggingConfig, ConfigManager};
+use niri_bar::config::{ConfigManager, LoggingConfig};
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
 use std::time::Duration;
@@ -34,7 +34,7 @@ fn test_application_config_manager() {
 
     let app = Application::new(logging_config).unwrap();
     let config_manager = app.get_config_manager();
-    
+
     // Verify config manager is available
     assert!(config_manager.get_config().is_none()); // No config loaded yet
 }
@@ -52,7 +52,7 @@ fn test_application_monitor_management() {
     };
 
     let app = Application::new(logging_config).unwrap();
-    
+
     // Test initial state - monitors should be empty
     let monitors = app.monitors.lock().unwrap();
     assert!(monitors.is_empty());
@@ -83,7 +83,11 @@ fn test_application_creation_with_invalid_logging_config() {
         };
 
         let app = Application::new_with_gtk(logging_config, false);
-        assert!(app.is_ok(), "Application should create successfully with level: {}", level);
+        assert!(
+            app.is_ok(),
+            "Application should create successfully with level: {}",
+            level
+        );
     }
 }
 
@@ -155,7 +159,6 @@ fn test_application_getters() {
 
 #[test]
 fn test_application_data_integrity() {
-
     let logging_config = LoggingConfig {
         level: "debug".to_string(),
         file: "".to_string(),
@@ -243,7 +246,7 @@ fn test_application_monitor_pattern_matching() {
     };
 
     let app = Application::new(logging_config).unwrap();
-    let config_manager = app.get_config_manager();
+    let _config_manager = app.get_config_manager();
 
     // Test pattern matching logic (this is tested more thoroughly in config tests)
     // but we can verify the application has access to it
@@ -271,8 +274,11 @@ fn test_application_performance() {
     let creation_time = start.elapsed();
 
     // Application creation should be reasonably fast
-    assert!(creation_time < Duration::from_millis(100),
-            "Application creation took too long: {:?}", creation_time);
+    assert!(
+        creation_time < Duration::from_millis(100),
+        "Application creation took too long: {:?}",
+        creation_time
+    );
 
     // Test repeated access performance
     let start = Instant::now();
@@ -282,8 +288,11 @@ fn test_application_performance() {
     }
     let access_time = start.elapsed();
 
-    assert!(access_time < Duration::from_millis(50),
-            "1000 property accesses took too long: {:?}", access_time);
+    assert!(
+        access_time < Duration::from_millis(50),
+        "1000 property accesses took too long: {:?}",
+        access_time
+    );
 }
 
 #[test]
@@ -313,7 +322,10 @@ fn test_application_config_validation() {
     // These should still create successfully (validation happens elsewhere)
     for config in invalid_logging_configs {
         let app = Application::new(config);
-        assert!(app.is_ok(), "Application should handle invalid configs gracefully");
+        assert!(
+            app.is_ok(),
+            "Application should handle invalid configs gracefully"
+        );
     }
 }
 

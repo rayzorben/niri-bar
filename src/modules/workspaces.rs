@@ -1,11 +1,11 @@
 use gtk4 as gtk;
 use gtk4::prelude::*;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 // no direct glib import; prefer gtk::glib to avoid version mismatches
 
 use crate::config::ModuleConfig;
-use crate::niri::{niri_bus, focus_workspace_index};
+use crate::niri::{focus_workspace_index, niri_bus};
 use std::collections::HashMap;
 // no mpsc needed; thumbnails come from YAML mapping only
 
@@ -19,9 +19,17 @@ impl WorkspacesModule {
         let show_wallpaper = settings.show_wallpaper.unwrap_or(false);
         let default_wp = settings.default_wallpaper.clone();
         let map_wp = settings.wallpapers.clone().unwrap_or_default();
-        let special_cmd = settings.special_cmd.clone();
-        let scroll_wrap = settings.additional.get("scroll_wraparound").and_then(|v| v.as_bool()).unwrap_or(false);
-        let scroll_throttle_ms = settings.additional.get("scroll_throttle_ms").and_then(|v| v.as_u64()).unwrap_or(50);
+        let _special_cmd = settings.special_cmd.clone();
+        let scroll_wrap = settings
+            .additional
+            .get("scroll_wraparound")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let scroll_throttle_ms = settings
+            .additional
+            .get("scroll_throttle_ms")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(50);
 
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 4);
         container.add_css_class("module-workspaces");
@@ -47,7 +55,7 @@ impl WorkspacesModule {
         let container_weak = container.downgrade();
         let last_focused_clone = last_focused.clone();
         let last_snapshot_clone = last_snapshot.clone();
-        let show_wallpaper = show_wallpaper;
+        // show_wallpaper is already defined above, no need to redefine
         let map_wp = map_wp.clone();
         let default_wp = default_wp.clone();
         glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
@@ -55,11 +63,18 @@ impl WorkspacesModule {
                 // Compare current snapshot to last
                 let bus = niri_bus();
                 let list = bus.workspaces_snapshot();
-                let current: Vec<(i64,i64,Option<String>,bool)> = list.iter()
-                    .map(|w| (w.id, w.idx, w.name.clone(), w.is_focused)).collect();
+                let current: Vec<(i64, i64, Option<String>, bool)> = list
+                    .iter()
+                    .map(|w| (w.id, w.idx, w.name.clone(), w.is_focused))
+                    .collect();
                 let changed = {
                     let mut last = last_snapshot_clone.borrow_mut();
-                    if *last != current { *last = current; true } else { false }
+                    if *last != current {
+                        *last = current;
+                        true
+                    } else {
+                        false
+                    }
                 };
                 if changed {
                     Self::rebuild_buttons(
@@ -84,7 +99,8 @@ impl WorkspacesModule {
             let scroll_throttle_ms_clone = scroll_throttle_ms;
             let scroll_wrap_clone = scroll_wrap;
             let gesture = gtk::EventControllerScroll::new(
-                gtk::EventControllerScrollFlags::VERTICAL | gtk::EventControllerScrollFlags::DISCRETE,
+                gtk::EventControllerScrollFlags::VERTICAL
+                    | gtk::EventControllerScrollFlags::DISCRETE,
             );
             gesture.connect_scroll(move |_, _dx, dy| {
                 let now = std::time::Instant::now();
@@ -108,8 +124,11 @@ impl WorkspacesModule {
                     }
 
                     let direction_up = dy < 0.0;
-                    if let Some(idx) = niri_bus().next_prev_workspace_idx(direction_up, scroll_wrap_clone) {
-                        if dy.abs() > 0.8 { // Only log significant movements
+                    if let Some(idx) =
+                        niri_bus().next_prev_workspace_idx(direction_up, scroll_wrap_clone)
+                    {
+                        if dy.abs() > 0.8 {
+                            // Only log significant movements
                             if direction_up {
                                 log::info!("Workspaces: ➡️ focus idx {}", idx);
                             } else {
@@ -148,7 +167,9 @@ impl WorkspacesModule {
         default_wp: &Option<String>,
     ) {
         // Clear and rebuild (simple for now; can be optimized later)
-        while let Some(child) = container.first_child() { container.remove(&child); }
+        while let Some(child) = container.first_child() {
+            container.remove(&child);
+        }
 
         let bus = niri_bus();
         let list = bus.workspaces_snapshot();
@@ -204,7 +225,9 @@ impl WorkspacesModule {
                     btn.add_css_class("pulse");
                     let btn_weak = btn.downgrade();
                     glib::timeout_add_local(std::time::Duration::from_millis(260), move || {
-                        if let Some(btn) = btn_weak.upgrade() { btn.remove_css_class("pulse"); }
+                        if let Some(btn) = btn_weak.upgrade() {
+                            btn.remove_css_class("pulse");
+                        }
                         glib::ControlFlow::Break
                     });
                     last_focused.set(Some(ws.id));
@@ -214,10 +237,21 @@ impl WorkspacesModule {
             let target_idx = ws.idx;
             let ws_id = ws.id;
             btn.connect_clicked(move |_| {
-                log::info!("Workspaces: 🖱️ clicked workspace {} (idx {})", ws_id, target_idx);
+                log::info!(
+                    "Workspaces: 🖱️ clicked workspace {} (idx {})",
+                    ws_id,
+                    target_idx
+                );
                 match focus_workspace_index(target_idx) {
-                    Ok(_) => log::debug!("Workspaces: ✅ successfully focused workspace {}", target_idx),
-                    Err(e) => log::error!("Workspaces: ❌ failed to focus workspace {}: {}", target_idx, e),
+                    Ok(_) => log::debug!(
+                        "Workspaces: ✅ successfully focused workspace {}",
+                        target_idx
+                    ),
+                    Err(e) => log::error!(
+                        "Workspaces: ❌ failed to focus workspace {}: {}",
+                        target_idx,
+                        e
+                    ),
                 }
             });
 
@@ -227,10 +261,21 @@ impl WorkspacesModule {
             let target_idx_click = target_idx;
             let ws_id_click = ws_id;
             click_gesture.connect_pressed(move |gesture, _n_press, _x, _y| {
-                log::info!("Workspaces: 🖱️ clicked workspace {} (idx {})", ws_id_click, target_idx_click);
+                log::info!(
+                    "Workspaces: 🖱️ clicked workspace {} (idx {})",
+                    ws_id_click,
+                    target_idx_click
+                );
                 match focus_workspace_index(target_idx_click) {
-                    Ok(_) => log::debug!("Workspaces: ✅ successfully focused workspace {}", target_idx_click),
-                    Err(e) => log::error!("Workspaces: ❌ failed to focus workspace {}: {}", target_idx_click, e),
+                    Ok(_) => log::debug!(
+                        "Workspaces: ✅ successfully focused workspace {}",
+                        target_idx_click
+                    ),
+                    Err(e) => log::error!(
+                        "Workspaces: ❌ failed to focus workspace {}: {}",
+                        target_idx_click,
+                        e
+                    ),
                 }
                 gesture.set_state(gtk::EventSequenceState::Claimed);
             });
@@ -245,7 +290,11 @@ impl WorkspacesModule {
 fn set_background_image(widget: &gtk::Widget, path: &str) {
     // Convert to file:// URL and escape quotes for CSS
     let abs = expand_tilde(path);
-    let mut uri = if abs.starts_with("file://") { abs } else { format!("file://{}", abs) };
+    let mut uri = if abs.starts_with("file://") {
+        abs
+    } else {
+        format!("file://{}", abs)
+    };
     // Very light URL escaping for spaces; avoids CSS parser issues
     uri = uri.replace(" ", "%20");
     let css = format!(
@@ -261,59 +310,78 @@ fn set_background_image(widget: &gtk::Widget, path: &str) {
 
 fn expand_tilde(path: &str) -> String {
     if let Some(stripped) = path.strip_prefix("~/")
-        && let Some(home) = std::env::var_os("HOME") {
+        && let Some(home) = std::env::var_os("HOME")
+    {
         format!("{}/{}", home.to_string_lossy(), stripped)
     } else {
         path.to_string()
     }
 }
 
+#[allow(dead_code)]
 fn query_current_wallpaper_path() -> Option<String> {
     // Try swww first: `swww query`
     if let Some(swww) = find_in_path("swww")
         && let Ok(out) = std::process::Command::new(swww).arg("query").output()
         && out.status.success()
-        && let Ok(txt) = String::from_utf8(out.stdout) {
+        && let Ok(txt) = String::from_utf8(out.stdout)
+    {
         for line in txt.lines() {
             if let Some(idx) = line.find("image:") {
-                let path = line[idx+6..].trim();
-                if !path.is_empty() { return Some(path.to_string()); }
+                let path = line[idx + 6..].trim();
+                if !path.is_empty() {
+                    return Some(path.to_string());
+                }
             }
         }
     }
     // Fallback swaybg: `swaybg -p` has no query; many setups write the path to env or config.
     // Attempt common env var (non-standard):
     if let Ok(path) = std::env::var("SWAYBG_IMAGE")
-        && !path.is_empty() { return Some(path); }
+        && !path.is_empty()
+    {
+        return Some(path);
+    }
     // Attempt reading ~/.cache/wallpaper or similar common files (best-effort only)
     if let Some(home) = std::env::var_os("HOME") {
         let p = std::path::Path::new(&home).join(".cache/wallpaper");
         if p.exists()
-            && let Ok(s) = std::fs::read_to_string(p) {
+            && let Ok(s) = std::fs::read_to_string(p)
+        {
             let path = s.trim();
-            if !path.is_empty() { return Some(path.to_string()); }
+            if !path.is_empty() {
+                return Some(path.to_string());
+            }
         }
     }
     None
 }
 
+#[allow(dead_code)]
 fn find_in_path(cmd: &str) -> Option<String> {
     use std::env;
     if let Some(paths) = env::var_os("PATH") {
         for p in env::split_paths(&paths) {
             let cand = p.join(cmd);
-            if cand.exists() { return cand.to_str().map(|s| s.to_string()); }
+            if cand.exists() {
+                return cand.to_str().map(|s| s.to_string());
+            }
         }
     }
     None
 }
 
+#[allow(dead_code)]
 fn apply_wallpaper_command(special_cmd: &Option<String>, image_path: &str) {
     // Order: special_cmd -> swww (daemon) -> swaybg -> noop
     // Expand tilde and validate path before issuing commands
     let img_expanded = expand_tilde(image_path);
     if !std::path::Path::new(&img_expanded).exists() {
-        log::error!("Workspaces: 💥 wallpaper path does not exist: {} (expanded from: {})", img_expanded, image_path);
+        log::error!(
+            "Workspaces: 💥 wallpaper path does not exist: {} (expanded from: {})",
+            img_expanded,
+            image_path
+        );
         return;
     }
 
@@ -329,15 +397,24 @@ fn apply_wallpaper_command(special_cmd: &Option<String>, image_path: &str) {
     }
     if let Some(swww) = find_in_path("swww") {
         // Check if swww-daemon is running
-        if std::process::Command::new(&swww).arg("query").output().map(|o| o.status.success()).unwrap_or(false) {
-            let _ = std::process::Command::new(&swww).args(["img", &img_expanded]).spawn();
+        if std::process::Command::new(&swww)
+            .arg("query")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        {
+            let _ = std::process::Command::new(&swww)
+                .args(["img", &img_expanded])
+                .spawn();
             return;
         }
     }
     if let Some(swaybg) = find_in_path("swaybg") {
         // kill existing (best-effort), then spawn
         let _ = std::process::Command::new("pkill").arg("swaybg").spawn();
-        let _ = std::process::Command::new(swaybg).args(["-m", "fill", "-i", &img_expanded]).spawn();
+        let _ = std::process::Command::new(swaybg)
+            .args(["-m", "fill", "-i", &img_expanded])
+            .spawn();
     }
 }
 
@@ -360,5 +437,3 @@ pub fn resolve_workspace_wallpaper(
     // Fallback to default if no specific wallpaper found
     default_wp.clone()
 }
-
-

@@ -1,8 +1,6 @@
-use niri_bar::logger::NiriBarLogger;
 use niri_bar::config::LoggingConfig;
+use niri_bar::logger::NiriBarLogger;
 use tempfile::NamedTempFile;
-use std::fs;
-use log::Level;
 
 #[test]
 fn test_logger_initialization() {
@@ -33,8 +31,8 @@ fn test_logger_with_file_output() {
         include_class: true,
     };
 
-    let logger = NiriBarLogger::new(config).unwrap();
-    
+    let _logger = NiriBarLogger::new(config).unwrap();
+
     // Test that file was created
     assert!(temp_file.path().exists());
 }
@@ -52,7 +50,7 @@ fn test_logger_iso8601_format() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that the format is set correctly
     assert_eq!(logger.config.format, "iso8601");
 }
@@ -70,7 +68,7 @@ fn test_logger_simple_format() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that the format is set correctly
     assert_eq!(logger.config.format, "simple");
 }
@@ -88,7 +86,7 @@ fn test_logger_level_filtering() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that the level is set correctly
     assert_eq!(logger.config.level, "warn");
 }
@@ -106,7 +104,7 @@ fn test_logger_console_output() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that console output is enabled
     assert!(logger.config.console);
 }
@@ -123,10 +121,10 @@ fn test_logger_file_output_disabled() {
         include_class: true,
     };
 
-    let logger = NiriBarLogger::new(config).unwrap();
-    
+    let _logger = NiriBarLogger::new(config).unwrap();
+
     // Test that file output is disabled when file path is empty
-    assert!(logger.file_handle.is_none());
+    assert!(_logger.file_handle.is_none());
 }
 
 #[test]
@@ -142,7 +140,7 @@ fn test_logger_include_file_option() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that include_file is enabled
     assert!(logger.config.include_file);
 }
@@ -160,7 +158,7 @@ fn test_logger_include_line_option() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that include_line is enabled
     assert!(logger.config.include_line);
 }
@@ -178,7 +176,7 @@ fn test_logger_include_class_option() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that include_class is enabled
     assert!(logger.config.include_class);
 }
@@ -187,7 +185,7 @@ fn test_logger_include_class_option() {
 fn test_logger_file_creation() {
     let temp_dir = tempfile::tempdir().unwrap();
     let log_file = temp_dir.path().join("test.log");
-    
+
     let config = LoggingConfig {
         level: "debug".to_string(),
         file: log_file.to_string_lossy().to_string(),
@@ -198,8 +196,8 @@ fn test_logger_file_creation() {
         include_class: true,
     };
 
-    let logger = NiriBarLogger::new(config).unwrap();
-    
+    let _logger = NiriBarLogger::new(config).unwrap();
+
     // Test that the log file was created
     assert!(log_file.exists());
 }
@@ -209,7 +207,7 @@ fn test_logger_directory_creation() {
     let temp_dir = tempfile::tempdir().unwrap();
     let nested_dir = temp_dir.path().join("nested").join("deep");
     let log_file = nested_dir.join("test.log");
-    
+
     let config = LoggingConfig {
         level: "debug".to_string(),
         file: log_file.to_string_lossy().to_string(),
@@ -220,8 +218,8 @@ fn test_logger_directory_creation() {
         include_class: true,
     };
 
-    let logger = NiriBarLogger::new(config).unwrap();
-    
+    let _logger = NiriBarLogger::new(config).unwrap();
+
     // Test that the nested directory was created
     assert!(nested_dir.exists());
     assert!(log_file.exists());
@@ -240,7 +238,7 @@ fn test_logger_default_values() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test default values
     assert_eq!(logger.config.level, "info");
     assert!(logger.config.console);
@@ -263,7 +261,7 @@ fn test_logger_error_level() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test error level
     assert_eq!(logger.config.level, "error");
 }
@@ -281,7 +279,7 @@ fn test_logger_trace_level() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test trace level
     assert_eq!(logger.config.level, "trace");
 }
@@ -299,7 +297,7 @@ fn test_logger_invalid_level_handling() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that invalid level is handled gracefully
     assert_eq!(logger.config.level, "invalid");
 }
@@ -318,7 +316,7 @@ fn test_logger_file_path_expansion() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that file path is handled correctly
     assert!(logger.file_handle.is_some());
 }
@@ -336,7 +334,7 @@ fn test_logger_configuration_validation() {
     };
 
     let logger = NiriBarLogger::new(config).unwrap();
-    
+
     // Test that all configuration options are properly set
     assert!(!logger.config.file.is_empty() || logger.config.file.is_empty());
     assert!(logger.config.console);
@@ -358,13 +356,13 @@ fn test_logger_performance() {
         include_class: true,
     };
 
-    let logger = NiriBarLogger::new(config.clone()).unwrap();
-    
+    let _logger = NiriBarLogger::new(config.clone()).unwrap();
+
     // Test that logger creation is fast
     let start = std::time::Instant::now();
     let _logger2 = NiriBarLogger::new(config).unwrap();
     let duration = start.elapsed();
-    
+
     // Should complete in less than 1 second
     assert!(duration.as_millis() < 1000);
 }
@@ -481,9 +479,12 @@ fn test_logger_level_filter_conversion() {
             "error" => LevelFilter::Error,
             _ => LevelFilter::Info,
         };
-        
-        assert_eq!(actual_filter, expected_filter, 
-                   "Level '{}' should convert to {:?}", level_str, expected_filter);
+
+        assert_eq!(
+            actual_filter, expected_filter,
+            "Level '{}' should convert to {:?}",
+            level_str, expected_filter
+        );
     }
 }
 
@@ -530,7 +531,11 @@ fn test_logger_configuration_flags() {
         let logger = NiriBarLogger::new(config.clone()).unwrap();
         assert_eq!(logger.config.include_file, include_file, "{}", description);
         assert_eq!(logger.config.include_line, include_line, "{}", description);
-        assert_eq!(logger.config.include_class, include_class, "{}", description);
+        assert_eq!(
+            logger.config.include_class, include_class,
+            "{}",
+            description
+        );
     }
 }
 
@@ -539,20 +544,23 @@ fn test_logger_thread_safety() {
     use std::sync::{Arc, Mutex};
     use std::thread;
 
-    let logger = Arc::new(Mutex::new(NiriBarLogger::new(LoggingConfig {
-        level: "debug".to_string(),
-        file: "".to_string(),
-        console: true,
-        format: "iso8601".to_string(),
-        include_file: true,
-        include_line: true,
-        include_class: true,
-    }).unwrap()));
+    let logger = Arc::new(Mutex::new(
+        NiriBarLogger::new(LoggingConfig {
+            level: "debug".to_string(),
+            file: "".to_string(),
+            console: true,
+            format: "iso8601".to_string(),
+            include_file: true,
+            include_line: true,
+            include_class: true,
+        })
+        .unwrap(),
+    ));
 
     let mut handles = vec![];
 
     // Spawn threads that access the logger
-    for i in 0..5 {
+    for _i in 0..5 {
         let logger_clone = Arc::clone(&logger);
 
         let handle = thread::spawn(move || {
@@ -636,8 +644,6 @@ fn test_logger_resource_cleanup() {
     assert!(temp_file.path().exists());
 }
 
-
-
 // ===== PROPERTY-BASED TESTS =====
 
 #[cfg(test)]
@@ -694,4 +700,3 @@ mod property_tests {
         }
     }
 }
-

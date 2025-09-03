@@ -1,4 +1,3 @@
-
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
@@ -12,7 +11,8 @@ async fn test_yaml_hot_reload() {
     let original_config_path = "niri-bar.yaml";
 
     // Read original content
-    let original_content = fs::read_to_string(original_config_path).expect("Failed to read config file");
+    let original_content =
+        fs::read_to_string(original_config_path).expect("Failed to read config file");
 
     // Create a temporary modified version - replace whatever theme is there with solarized
     let modified_content = if original_content.contains("theme: \"wombat\"") {
@@ -20,7 +20,8 @@ async fn test_yaml_hot_reload() {
     } else if original_content.contains("theme: \"dracula\"") {
         original_content.replace("theme: \"dracula\"", "theme: \"solarized\"")
     } else {
-        original_content.replace("theme: \"solarized\"", "theme: \"solarized\"")
+        // No-op case: return content unchanged if no theme found
+        original_content.clone()
     };
 
     // Write modified content to temp file
@@ -30,7 +31,8 @@ async fn test_yaml_hot_reload() {
     sleep(Duration::from_millis(50)).await;
 
     // Verify the change was written to the temp file
-    let current_content = fs::read_to_string(temp_config_path).expect("Failed to read temp config file");
+    let current_content =
+        fs::read_to_string(temp_config_path).expect("Failed to read temp config file");
     assert!(current_content.contains("theme: \"solarized\""));
 
     // Clean up temp file
@@ -70,11 +72,15 @@ fn test_file_watcher_setup() {
     let required_files = [
         "niri-bar.yaml",
         "themes/wombat.css",
-        "themes/solarized.css", 
-        "themes/dracula.css"
+        "themes/solarized.css",
+        "themes/dracula.css",
     ];
-    
+
     for file_path in &required_files {
-        assert!(Path::new(file_path).exists(), "Required file {} does not exist", file_path);
+        assert!(
+            Path::new(file_path).exists(),
+            "Required file {} does not exist",
+            file_path
+        );
     }
 }

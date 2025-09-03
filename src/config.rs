@@ -1,10 +1,10 @@
 use crate::file_watcher::FileWatcher;
+use anyhow::Result;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
-use anyhow::Result;
 
 /// Text alignment options
 ///
@@ -27,7 +27,9 @@ pub enum TextAlign {
 }
 
 impl Default for TextAlign {
-    fn default() -> Self { Self::Left }
+    fn default() -> Self {
+        Self::Left
+    }
 }
 
 /// Display visibility options
@@ -40,7 +42,9 @@ pub enum DisplayMode {
 }
 
 impl Default for DisplayMode {
-    fn default() -> Self { Self::Show }
+    fn default() -> Self {
+        Self::Show
+    }
 }
 
 /// Module configuration with YAML anchor support
@@ -101,7 +105,9 @@ pub enum ColumnOverflowPolicy {
 }
 
 impl Default for ColumnOverflowPolicy {
-    fn default() -> Self { Self::Hide }
+    fn default() -> Self {
+        Self::Hide
+    }
 }
 
 // Removed ColumnSize in favor of simpler equal-width behavior + optional fixed width per column
@@ -174,13 +180,27 @@ pub struct SwwwOptions {
     pub fill_color: String,
 }
 
-fn default_transition_type() -> String { "simple".to_string() }
-fn default_transition_duration() -> f64 { 1.0 }
-fn default_transition_step() -> u8 { 90 }
-fn default_transition_fps() -> u8 { 30 }
-fn default_filter() -> String { "Lanczos3".to_string() }
-fn default_resize() -> String { "crop".to_string() }
-fn default_fill_color() -> String { "000000".to_string() }
+fn default_transition_type() -> String {
+    "simple".to_string()
+}
+fn default_transition_duration() -> f64 {
+    1.0
+}
+fn default_transition_step() -> u8 {
+    90
+}
+fn default_transition_fps() -> u8 {
+    30
+}
+fn default_filter() -> String {
+    "Lanczos3".to_string()
+}
+fn default_resize() -> String {
+    "crop".to_string()
+}
+fn default_fill_color() -> String {
+    "000000".to_string()
+}
 
 /// Wallpaper configuration with per-workspace mapping
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -301,7 +321,7 @@ impl ConfigManager {
     /// Create a new configuration manager
     pub fn new() -> Self {
         let (event_tx, _) = broadcast::channel(100);
-        
+
         Self {
             config: Arc::new(Mutex::new(None)),
             event_tx,
@@ -312,10 +332,10 @@ impl ConfigManager {
     /// Start monitoring the configuration file
     pub async fn start(&mut self) -> Result<()> {
         log::info!("ConfigManager: Starting configuration file monitoring...");
-        
+
         let config = self.config.clone();
         let event_tx = self.event_tx.clone();
-        
+
         // Create file watcher for the configuration file
         let mut watcher = FileWatcher::new("niri-bar.yaml")
             .on_load({
@@ -341,7 +361,7 @@ impl ConfigManager {
 
         // Start watching the file
         watcher.start().await?;
-        
+
         self.watcher = Some(watcher);
         Ok(())
     }
@@ -369,23 +389,27 @@ impl ConfigManager {
         content: Vec<u8>,
     ) {
         log::info!("ConfigManager: Loading configuration from {:?}", path);
-        
+
         match Self::parse_config(&content) {
             Ok(new_config) => {
                 log::info!("ConfigManager: Configuration loaded successfully");
-                
+
                 // Update the configuration
                 {
                     let mut config_guard = config.lock().unwrap();
                     *config_guard = Some(new_config.clone());
                 }
-                
+
                 // Emit loaded event
                 let _ = event_tx.send(ConfigEvent::Loaded(new_config));
             }
             Err(e) => {
-                log::error!("ConfigManager: Failed to parse configuration from {:?}: {}", path, e);
-                
+                log::error!(
+                    "ConfigManager: Failed to parse configuration from {:?}: {}",
+                    path,
+                    e
+                );
+
                 // Emit error event
                 let _ = event_tx.send(ConfigEvent::Error(format!(
                     "Failed to parse configuration from {:?}: {}",
@@ -403,23 +427,27 @@ impl ConfigManager {
         content: Vec<u8>,
     ) {
         log::info!("ConfigManager: Configuration file changed, reloading...");
-        
+
         match Self::parse_config(&content) {
             Ok(new_config) => {
                 log::info!("ConfigManager: Configuration updated successfully");
-                
+
                 // Update the configuration
                 {
                     let mut config_guard = config.lock().unwrap();
                     *config_guard = Some(new_config.clone());
                 }
-                
+
                 // Emit updated event
                 let _ = event_tx.send(ConfigEvent::Updated(new_config));
             }
             Err(e) => {
-                log::error!("ConfigManager: Failed to parse updated configuration from {:?}: {}", path, e);
-                
+                log::error!(
+                    "ConfigManager: Failed to parse updated configuration from {:?}: {}",
+                    path,
+                    e
+                );
+
                 // Emit error event (don't update current config)
                 let _ = event_tx.send(ConfigEvent::Error(format!(
                     "Failed to parse updated configuration from {:?}: {}",
@@ -435,8 +463,12 @@ impl ConfigManager {
         path: std::path::PathBuf,
         error: String,
     ) {
-        log::error!("ConfigManager: Configuration error for {:?}: {}", path, error);
-        
+        log::error!(
+            "ConfigManager: Configuration error for {:?}: {}",
+            path,
+            error
+        );
+
         let _ = event_tx.send(ConfigEvent::Error(format!(
             "Configuration error for {:?}: {}",
             path, error
@@ -466,13 +498,13 @@ impl ConfigManager {
     /// ```
     pub fn parse_config(content: &[u8]) -> Result<NiriBarConfig> {
         let content_str = String::from_utf8(content.to_vec())?;
-        
+
         // Parse YAML
         let config: NiriBarConfig = serde_yaml::from_str(&content_str)?;
-        
+
         // Validate against schema
         Self::validate_config(&config)?;
-        
+
         Ok(config)
     }
 
@@ -481,14 +513,14 @@ impl ConfigManager {
         // Load schema
         let _schema_content = include_str!("niri-bar-yaml.schema.json");
         let _schema: serde_json::Value = serde_json::from_str(_schema_content)?;
-        
+
         // Convert config to JSON for validation
         let _config_json = serde_json::to_value(config)?;
-        
+
         // Validate (using jsonschema crate if available, otherwise skip)
         // For now, we'll do basic validation manually
         Self::basic_validation(config)?;
-        
+
         Ok(())
     }
 
@@ -497,22 +529,28 @@ impl ConfigManager {
         // Validate logging level
         let valid_levels = ["debug", "info", "warn", "error"];
         if !valid_levels.contains(&config.logging.level.as_str()) {
-            return Err(anyhow::anyhow!("Invalid logging level: {}", config.logging.level));
+            return Err(anyhow::anyhow!(
+                "Invalid logging level: {}",
+                config.logging.level
+            ));
         }
-        
+
         // Validate logging format
         let valid_formats = ["iso8601", "simple"];
         if !valid_formats.contains(&config.logging.format.as_str()) {
-            return Err(anyhow::anyhow!("Invalid logging format: {}", config.logging.format));
+            return Err(anyhow::anyhow!(
+                "Invalid logging format: {}",
+                config.logging.format
+            ));
         }
-        
+
         // Validate monitor patterns
         for monitor_config in &config.application.monitors {
             if monitor_config.match_pattern.is_empty() {
                 return Err(anyhow::anyhow!("Monitor match pattern cannot be empty"));
             }
         }
-        
+
         Ok(())
     }
 
@@ -579,7 +617,8 @@ impl ConfigManager {
         // Prefer the first with a non-empty layout.columns
         for (mc, _spec) in &matches {
             if let Some(layout) = mc.layout.clone()
-                && !layout.columns.is_empty() {
+                && !layout.columns.is_empty()
+            {
                 return Some(layout);
             }
         }
@@ -612,7 +651,8 @@ impl ConfigManager {
             }
         }
         if let Some(mc) = best_match
-            && let Some(overrides) = &mc.modules {
+            && let Some(overrides) = &mc.modules
+        {
             for (k, v) in overrides {
                 merged.insert(k.clone(), v.clone());
             }
@@ -641,7 +681,7 @@ impl ConfigManager {
     pub fn matches_pattern(monitor_name: &str, pattern: &str) -> bool {
         // Handle exact match patterns with ^ and $
         if pattern.starts_with("^") && pattern.ends_with("$") {
-            let inner_pattern = &pattern[1..pattern.len()-1];
+            let inner_pattern = &pattern[1..pattern.len() - 1];
             // Very small subset: prefix.* pattern => starts_with(prefix)
             if let Some(pos) = inner_pattern.find(".*") {
                 let prefix = &inner_pattern[..pos];
@@ -649,21 +689,19 @@ impl ConfigManager {
             }
             return monitor_name == inner_pattern;
         }
-        
+
         // Convert simple patterns to regex
-        let regex_pattern = pattern
-            .replace(".", "\\.")
-            .replace("*", ".*");
-        
+        let regex_pattern = pattern.replace(".", "\\.").replace("*", ".*");
+
         // Simple matching for now - in production you'd want a proper regex engine
         if regex_pattern == ".*" {
             return true;
         }
-        
+
         if let Some(prefix) = pattern.strip_suffix(".*") {
             return monitor_name.starts_with(prefix);
         }
-        
+
         monitor_name == pattern
     }
 }

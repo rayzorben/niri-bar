@@ -31,9 +31,7 @@ impl BatteryModule {
             .get("show_icon")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
-        let show_percentage = settings
-            .show_percentage
-            .unwrap_or(true);
+        let show_percentage = settings.show_percentage.unwrap_or(true);
         let pulse = settings
             .additional
             .get("pulse")
@@ -42,7 +40,13 @@ impl BatteryModule {
         let warn = settings.warn_threshold.unwrap_or(40);
         let crit = settings.critical_threshold.unwrap_or(10);
 
-        let opts = BatteryOpts { show_icon, show_percentage, warn, crit, pulse };
+        let opts = BatteryOpts {
+            show_icon,
+            show_percentage,
+            warn,
+            crit,
+            pulse,
+        };
 
         // Root container: box with label and optional menu button
         let root = gtk::Button::new();
@@ -127,11 +131,17 @@ impl BatteryModule {
                 }
             });
             // Initial populate
-            if let Some(ppd) = ppd_path.as_ref() { rebuild_power_profile_list(&list, ppd, Some(popover.clone())); }
+            if let Some(ppd) = ppd_path.as_ref() {
+                rebuild_power_profile_list(&list, ppd, Some(popover.clone()));
+            }
             // Toggle popover on button click
             let pop = popover.clone();
             root.connect_clicked(move |_| {
-                if pop.is_visible() { pop.popdown(); } else { pop.popup(); }
+                if pop.is_visible() {
+                    pop.popdown();
+                } else {
+                    pop.popup();
+                }
             });
             // No polling needed - power profiles change rarely and can be refreshed on demand
         } else {
@@ -151,7 +161,9 @@ impl BatteryModule {
         let mut monitors: Vec<gio::FileMonitor> = Vec::new();
         for p in [&cap_path, &stat_path] {
             let file = gio::File::for_path(p);
-            if let Ok(mon) = file.monitor_file(gio::FileMonitorFlags::NONE, None::<&gio::Cancellable>) {
+            if let Ok(mon) =
+                file.monitor_file(gio::FileMonitorFlags::NONE, None::<&gio::Cancellable>)
+            {
                 log::info!("Monitoring battery file: {:?}", p);
                 let lbl = label.clone();
                 let img = image.clone();
@@ -180,19 +192,26 @@ impl BatteryModule {
 
 fn resolve_battery_device(preferred: &str) -> std::path::PathBuf {
     let base = std::path::Path::new("/sys/class/power_supply");
-    let mut candidates = vec![preferred.to_string(), preferred.to_uppercase(), preferred.to_lowercase()];
+    let mut candidates = vec![
+        preferred.to_string(),
+        preferred.to_uppercase(),
+        preferred.to_lowercase(),
+    ];
     // Common default
     candidates.push("BAT0".to_string());
     candidates.push("bat0".to_string());
     for cand in candidates {
         let p = base.join(&cand);
-        if p.exists() { return p; }
+        if p.exists() {
+            return p;
+        }
     }
     // Fallback: first BAT*
     if let Ok(read_dir) = std::fs::read_dir(base) {
         for e in read_dir.flatten() {
             if let Some(name) = e.file_name().to_str()
-                && name.to_ascii_uppercase().starts_with("BAT") {
+                && name.to_ascii_uppercase().starts_with("BAT")
+            {
                 return e.path();
             }
         }
@@ -202,14 +221,22 @@ fn resolve_battery_device(preferred: &str) -> std::path::PathBuf {
 
 fn find_powerprofilesctl() -> Option<std::path::PathBuf> {
     use std::{env, path::PathBuf};
-    for p in ["/usr/bin/powerprofilesctl", "/bin/powerprofilesctl", "/usr/local/bin/powerprofilesctl"] {
+    for p in [
+        "/usr/bin/powerprofilesctl",
+        "/bin/powerprofilesctl",
+        "/usr/local/bin/powerprofilesctl",
+    ] {
         let path = std::path::Path::new(p);
-        if path.exists() { return Some(path.to_path_buf()); }
+        if path.exists() {
+            return Some(path.to_path_buf());
+        }
     }
     if let Some(paths) = env::var_os("PATH") {
         for part in env::split_paths(&paths) {
             let cand: PathBuf = part.join("powerprofilesctl");
-            if cand.exists() { return Some(cand); }
+            if cand.exists() {
+                return Some(cand);
+            }
         }
     }
     None
@@ -244,7 +271,11 @@ fn update_battery_label(
         }
     }
 
-    let txt = if opts.show_percentage { format!("{}%", p) } else { String::new() };
+    let txt = if opts.show_percentage {
+        format!("{}%", p)
+    } else {
+        String::new()
+    };
     log::debug!("Battery update: {}%, status: {:?}, text: {}", p, stat, txt);
     label.set_text(&txt);
 
@@ -252,9 +283,13 @@ fn update_battery_label(
     label.remove_css_class("battery-ok");
     label.remove_css_class("battery-warn");
     label.remove_css_class("battery-crit");
-    if p <= opts.crit { label.add_css_class("battery-crit"); }
-    else if p <= opts.warn { label.add_css_class("battery-warn"); }
-    else { label.add_css_class("battery-ok"); }
+    if p <= opts.crit {
+        label.add_css_class("battery-crit");
+    } else if p <= opts.warn {
+        label.add_css_class("battery-warn");
+    } else {
+        label.add_css_class("battery-ok");
+    }
 
     // Pulse behaviour
     if opts.pulse {
@@ -263,7 +298,9 @@ fn update_battery_label(
             label.add_css_class("pulse");
             let label_weak = label.downgrade();
             glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
-                if let Some(lbl) = label_weak.upgrade() { lbl.remove_css_class("pulse"); }
+                if let Some(lbl) = label_weak.upgrade() {
+                    lbl.remove_css_class("pulse");
+                }
                 glib::ControlFlow::Break
             });
         }
@@ -272,12 +309,19 @@ fn update_battery_label(
 
 fn select_battery_icon_name(percent: u8, charging: bool) -> String {
     // Map to standard Adwaita symbolic icon names
-    let bucket = if percent >= 95 { "full" }
-        else if percent >= 80 { "good" }
-        else if percent >= 55 { "medium" }
-        else if percent >= 30 { "low" }
-        else if percent > 5 { "caution" }
-        else { "empty" };
+    let bucket = if percent >= 95 {
+        "full"
+    } else if percent >= 80 {
+        "good"
+    } else if percent >= 55 {
+        "medium"
+    } else if percent >= 30 {
+        "low"
+    } else if percent > 5 {
+        "caution"
+    } else {
+        "empty"
+    };
     if charging {
         format!("battery-{}-charging-symbolic", bucket)
     } else {
@@ -285,21 +329,37 @@ fn select_battery_icon_name(percent: u8, charging: bool) -> String {
     }
 }
 
-fn rebuild_power_profile_list(list: &gtk::ListBox, ppd_path: &std::path::Path, _popover: Option<gtk::Popover>) {
-    while let Some(child) = list.first_child() { list.remove(&child); }
-    let current = std::process::Command::new(ppd_path).arg("get").output().ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string());
-    for (name, arg) in [("Performance", "performance"), ("Balanced", "balanced"), ("Power Saver", "power-saver")] {
+fn rebuild_power_profile_list(
+    list: &gtk::ListBox,
+    ppd_path: &std::path::Path,
+    _popover: Option<gtk::Popover>,
+) {
+    while let Some(child) = list.first_child() {
+        list.remove(&child);
+    }
+    let current = std::process::Command::new(ppd_path)
+        .arg("get")
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string());
+    for (name, arg) in [
+        ("Performance", "performance"),
+        ("Balanced", "balanced"),
+        ("Power Saver", "power-saver"),
+    ] {
         let row = gtk::ListBoxRow::new();
         let arg_string = arg.to_string();
         let r_label = gtk::Label::new(Some(name));
         r_label.set_xalign(0.0);
-        if current.as_deref() == Some(arg) { row.add_css_class("active"); }
+        if current.as_deref() == Some(arg) {
+            row.add_css_class("active");
+        }
         row.set_child(Some(&r_label));
         // Store profile in row data for activation callback
-        unsafe { row.set_data("profile", arg_string); }
+        unsafe {
+            row.set_data("profile", arg_string);
+        }
         list.append(&row);
     }
 }
-
-

@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug niri-bar",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/niri-bar",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "cargo build (debug)",
+      "args": [],
+      "env": {
+        "RUST_BACKTRACE": "full",
+        "RUST_LOG": "trace,gtk=info",
+        "G_DEBUG": "fatal-criticals"
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}
+
+

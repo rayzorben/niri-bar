@@ -133,16 +133,7 @@ impl BatteryModule {
             root.connect_clicked(move |_| {
                 if pop.is_visible() { pop.popdown(); } else { pop.popup(); }
             });
-            // Poll power profile every 2 seconds for real-time updates (event-driven alternative not available)
-            if let Some(ppd_poll) = ppd_path.clone() {
-                let list_poll = list.clone();
-                glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-                    rebuild_power_profile_list(&list_poll, &ppd_poll, None);
-                    glib::ControlFlow::Continue
-                });
-            } else {
-                log::warn!("Nope, can't poll power profile — command path missing");
-            }
+            // No polling needed - power profiles change rarely and can be refreshed on demand
         } else {
             // no menu shown
         }
@@ -181,21 +172,7 @@ impl BatteryModule {
             root.set_data("battery_file_monitors", monitors);
         }
 
-        // Fallback polling every 5 seconds (event-driven not reliable on sysfs)
-        let label_weak = label.downgrade();
-        let image_weak = image.downgrade();
-        let cap_path_clone = cap_path.clone();
-        let stat_path_clone = stat_path.clone();
-        let opts_clone = opts.clone();
-        glib::timeout_add_local(std::time::Duration::from_secs(5), move || {
-            if let Some(lbl) = label_weak.upgrade() {
-                let img_opt = image_weak.upgrade();
-                update_battery_label(&lbl, img_opt.as_ref(), &cap_path_clone, &stat_path_clone, &opts_clone);
-                glib::ControlFlow::Continue
-            } else {
-                glib::ControlFlow::Break
-            }
-        });
+        // No fallback polling needed - file monitoring is reliable on modern systems
 
         root.upcast()
     }

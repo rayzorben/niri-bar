@@ -1,0 +1,4 @@
+file watcher on battery?
+cleanup
+viewport module
+use swww ipc

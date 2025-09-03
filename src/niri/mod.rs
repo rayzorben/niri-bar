@@ -85,6 +85,9 @@ pub struct NiriBus {
     windows_by_id: Mutex<HashMap<i64, WindowInfo>>, // id -> info
     focused_window_id: Mutex<Option<i64>>,
     workspaces: Mutex<Vec<WorkspaceInfo>>, // ordered by idx
+    keyboard_layout_names: Mutex<Vec<String>>, // from KeyboardLayoutsChanged
+    current_keyboard_layout_index: Mutex<Option<usize>>, // from KeyboardLayoutsChanged
+    overview_is_open: Mutex<bool>, // from OverviewOpenedOrClosed
 }
 
 impl NiriBus {
@@ -93,6 +96,9 @@ impl NiriBus {
             windows_by_id: Mutex::new(HashMap::new()),
             focused_window_id: Mutex::new(None),
             workspaces: Mutex::new(Vec::new()),
+            keyboard_layout_names: Mutex::new(Vec::new()),
+            current_keyboard_layout_index: Mutex::new(None),
+            overview_is_open: Mutex::new(false),
         }
     }
 
@@ -195,6 +201,33 @@ impl NiriBus {
                         self.queue_broadcast_title();
                     }
                 }
+            } else if obj.contains_key("KeyboardLayoutsChanged") {
+                // {"KeyboardLayoutsChanged":{"keyboard_layouts":{"names":[...],"current_idx":0}}}
+                if let Some(kb) = obj.get("KeyboardLayoutsChanged").and_then(|v| v.get("keyboard_layouts")).and_then(|v| v.as_object()) {
+                    let names: Vec<String> = kb
+                        .get("names")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| arr.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect())
+                        .unwrap_or_default();
+                    let idx_opt = kb.get("current_idx").and_then(|v| v.as_u64()).and_then(|u| usize::try_from(u).ok());
+                    if let Ok(mut slot) = self.keyboard_layout_names.lock() {
+                        *slot = names;
+                    }
+                    if let Ok(mut cur) = self.current_keyboard_layout_index.lock() {
+                        *cur = idx_opt;
+                    }
+                }
+            } else if obj.contains_key("OverviewOpenedOrClosed") {
+                // {"OverviewOpenedOrClosed":{"is_open":true}}
+                if let Some(is_open) = obj
+                    .get("OverviewOpenedOrClosed")
+                    .and_then(|v| v.get("is_open"))
+                    .and_then(|v| v.as_bool())
+                {
+                    if let Ok(mut slot) = self.overview_is_open.lock() {
+                        *slot = is_open;
+                    }
+                }
             }
         }
     }
@@ -275,6 +308,40 @@ impl NiriBus {
             Some(list[list.len()-1].idx)
         } else {
             None
+        }
+    }
+
+    /// Snapshot of keyboard layouts state: list of names and current index (if any)
+    pub fn keyboard_layouts_snapshot(&self) -> (Vec<String>, Option<usize>) {
+        let names = self.keyboard_layout_names.lock().map(|v| v.clone()).unwrap_or_default();
+        let idx = self.current_keyboard_layout_index.lock().ok().and_then(|g| *g);
+        (names, idx)
+    }
+
+    /// Whether the overview is currently open
+    pub fn is_overview_open(&self) -> bool {
+        self.overview_is_open.lock().map(|v| *v).unwrap_or(false)
+    }
+
+    /// Reset all internal state for testing isolation
+    pub fn reset(&self) {
+        if let Ok(mut windows) = self.windows_by_id.lock() {
+            windows.clear();
+        }
+        if let Ok(mut focused) = self.focused_window_id.lock() {
+            *focused = None;
+        }
+        if let Ok(mut workspaces) = self.workspaces.lock() {
+            workspaces.clear();
+        }
+        if let Ok(mut names) = self.keyboard_layout_names.lock() {
+            names.clear();
+        }
+        if let Ok(mut cur) = self.current_keyboard_layout_index.lock() {
+            *cur = None;
+        }
+        if let Ok(mut ov) = self.overview_is_open.lock() {
+            *ov = false;
         }
     }
 }

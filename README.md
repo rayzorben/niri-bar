@@ -6,6 +6,8 @@ Pixel-perfect, CSS-themed, configuration-driven bar for the Niri Wayland composi
 - Linux + Wayland only (Niri WM). No X11/macOS/Windows.
 - GTK4 + `gtk4-layer-shell`.
 - Rust toolchain (stable).
+- Optional (for wallpaper switching): `swww` (recommended) or `swaybg` installed and running.
+- Optional (for battery/power): `powerprofilesctl` for power profile switching.
 
 ## Build and Run
 ```bash
@@ -52,10 +54,18 @@ application:
 Modules are loaded via a registry by name (e.g., `clock` → `bar.module.clock`).
 - `clock`: single `format` string, updates every 1s independently.
 - `window_title`: shows focused window title via Niri IPC state.
-- `workspaces`: buttons per workspace; click to focus; wheel to next/prev; `scroll_wraparound` supported.
+- `workspaces`: buttons per workspace; click to focus; wheel to next/prev; `scroll_wraparound` supported; optional `show_wallpaper` for button thumbnails.
+- `battery`: shows charge % + icon; optional power profile dropdown (requires `powerprofilesctl`); pulse animation.
+- `tray`: system tray icons (StatusNotifierHost) with right-click menus; supports swww/swaybg providers.
+
+## Wallpaper Switching
+Configured in `application.wallpapers`:
+- `default`: fallback wallpaper path.
+- `by_workspace`: map workspace name/index to specific paths (e.g., `"1"`, `"dev"`).
+- `special_cmd`: custom command with `${current_workspace_image}` substitution.
+- Automatically switches wallpaper on workspace focus using: special_cmd → swww → swaybg → none.
 
 ## Logging
-- Playful 1990s high-school slang style. Configurable in `logging` section.
 - Default file: `~/.local/share/niri-bar/niri-bar.log`.
 
 ## Testing & CI

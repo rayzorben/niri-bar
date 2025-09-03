@@ -1,23 +1,3 @@
----
-description: testing rules
-globs: *.*
-alwaysApply: true
----
-2. Use `cargo test -- --test-threads=1 --timeout 15s` when running manually; code must not include built-in timeouts.  
-3. Always write integration tests that simulate IPC messages (fake Niri responses).  
-4. Test coverage should be ≥80%.  
-5. CI must pass `cargo test`, `cargo check`, `cargo fmt`, and `cargo clippy`.  
-6. Use the Logger class in tests and production with rich levels: `debug`, `info`, `warn`, `error`, `trace`. All significant actions should be logged.  
-
-7. Real YAML validation policy:
-   - All config tests MUST load the real `niri-bar.yaml` from the workspace root.
-   - Validation MUST be performed via the JSON schema at `src/niri-bar-yaml.schema.json` by calling the production parser (`ConfigManager::parse_config`).
-   - Tests MUST assert against data read from the real YAML, not from hardcoded YAML strings. Hardcoded YAML is only allowed in property-based or edge-case generator tests, never as the primary correctness test.
-
-8. Event-driven policy (no polling):
-   - UI updates MUST be driven by Niri IPC events or file watcher events. Polling (e.g., glib timeouts) is forbidden unless there is strictly no alternative and the reason is documented in the test plan.
-   - Tests SHOULD simulate IPC events and assert instant UI state updates without delay.
-
 # Niri-Bar Comprehensive Test Plan
 
 This document outlines the comprehensive testing strategy for the niri-bar Rust workspace. All tests must be deterministic, hermetic, and provide full coverage of happy paths, error cases, edge cases, and safety checks.

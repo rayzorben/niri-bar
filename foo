@@ -1,0 +1,5 @@
+i like that but im still having an issue when switching from, for example, workspace 1 to workspace 2, the workspaces module briefly flashes the wallpaper from the current workspace (1) as the button image and then queries and gets the image for workspace 2.
+
+i believe this can be solved by setting the path to the image for each workspace upon startup when prepopulating. then when switching that image is used immediately even before the call to swww img. the problem is that swww has options that can transition the image after n seconds and it is non-deterministic - the user may want a 30 second transition.
+
+i think we can solve this by using the cached path and then initiating a swww query and updating the cache path when it does return

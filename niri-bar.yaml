@@ -5,6 +5,8 @@ application:
   # Theme configuration
   theme: "dracula"  # Options: wombat, solarized, dracula
 
+  # ---- GLOBAL WALLPAPER MODULE DEFAULTS ----
+
   # ---- GLOBAL *MODULE DEFAULTS ----
   modules:
     clock: &clock_default
@@ -14,6 +16,9 @@ application:
     workspaces: &workspaces_default
       highlight_active: true
       show_numbers: true
+      show_wallpaper: true
+      scroll_wraparound: false
+      scroll_throttle_ms: 30
 
     window_title: &window_title_default
       max_length: 80
@@ -36,13 +41,30 @@ application:
       net: true
       display: "show"  # show, hide
 
+    # Wallpaper module (for switching per workspace)
+    wallpaper: &wallpaper_default
+      default_wallpaper: "~/Dropbox/Ray/Photos/durango.png"
+      wallpapers:
+        #"1": "/path/to/workspace1.jpg"
+        "2": "~/Pictures/plugged-in.gif"
+        #"dev": "/path/to/dev-workspace.jpg"
+      # special_cmd: 'mytool -i ${current_workspace_image}'
+      swww_options:
+        transition_type: "fade"
+        transition_duration: 1.0
+        transition_step: 90
+        transition_fps: 30
+        filter: "Lanczos3"
+        resize: "crop"
+        fill_color: "000000"
+
   # ---- LAYOUT PROFILES ----
   layouts:
     # Default everywhere: simple 3 columns
     three_column: &layout_three
       columns: &cols_three
         left: &col_left
-          modules: ["workspaces"]
+          modules: ["workspaces", "wallpaper"]
           overflow: hide
           gap: 6        # pixels between modules
           align: "left" # left, center, right
@@ -61,7 +83,7 @@ application:
     five_panel: &layout_five
       columns:
         left:
-          modules: ["workspaces"]
+          modules: ["workspaces", "wallpaper"]
           overflow: hide
           gap: 6
           align: "left"
@@ -90,7 +112,7 @@ application:
   monitors:
     # Global baseline: 3-column layout on all monitors
     - match: ".*"
-      enabled: true
+      show_bar: true
 
       layout: *layout_three
 
@@ -101,14 +123,15 @@ application:
         battery:      { <<: *battery_default }
         tray:         { <<: *tray_default }
         system:       { <<: *system_default }
+        wallpaper:     { <<: *wallpaper_default }
 
     - match: "^eDP-1$"
-      enabled: true
+      show_bar: true
 
       layout:
         columns:
           left:
-            modules: ["workspaces"]
+            modules: ["workspaces", "wallpaper"]
             overflow: hide
             gap: 6
             align: "left"
@@ -134,10 +157,12 @@ application:
         window_title:
           <<: *window_title_default
           display: "show"  # Ensure visible on laptop
+        wallpaper:
+          <<: *wallpaper_default
 
     # Example: disable all other DP heads (optional)
     - match: "^DP-.*$"
-      enabled: false
+      show_bar: false
 
 # Logging configuration
 logging:

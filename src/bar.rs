@@ -322,6 +322,12 @@ impl Bar {
                     tooltip: module_config.and_then(|c| c.tooltip),
                     highlight_active: module_config.and_then(|c| c.highlight_active),
                     show_numbers: module_config.and_then(|c| c.show_numbers),
+                    show_wallpaper: module_config.and_then(|c| c.show_wallpaper),
+                    // Pass through wallpaper mapping and defaults so workspaces can prepopulate
+                    default_wallpaper: module_config.and_then(|c| c.default_wallpaper.clone()),
+                    wallpapers: module_config.and_then(|c| c.wallpapers.clone()),
+                    special_cmd: module_config.and_then(|c| c.special_cmd.clone()),
+                    swww_options: module_config.and_then(|c| c.swww_options.clone()),
                     max_length: module_config.and_then(|c| c.max_length),
                     ellipsize: module_config.and_then(|c| c.ellipsize.clone()),
                     show_percentage: module_config.and_then(|c| c.show_percentage),

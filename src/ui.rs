@@ -140,7 +140,7 @@ impl UIManager {
         
         // Create bars for each monitor using the new application config
         for monitor_match in &config.application.monitors {
-            if !monitor_match.enabled {
+            if !monitor_match.show_bar {
                 continue;
             }
             

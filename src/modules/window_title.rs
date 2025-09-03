@@ -26,9 +26,9 @@ impl WindowTitleModule {
             label.set_text(&initial);
         }
 
-        // Poll bus state on GTK thread every 200ms (non-blocking)
+        // Poll bus state on GTK thread every 50ms (non-blocking)
         let label_weak = label.downgrade();
-        glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
+        glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
             let title = niri_bus().current_title();
             if let Some(label) = label_weak.upgrade() {
                 label.set_text(&title);

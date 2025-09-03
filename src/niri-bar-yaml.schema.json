@@ -28,6 +28,11 @@
             "$ref": "#/definitions/LayoutConfig"
           }
         },
+        "wallpapers": {
+          "$ref": "#/definitions/WallpaperConfig",
+          "description": "Global wallpaper settings",
+          "deprecated": true
+        },
         "monitors": {
           "type": "array",
           "description": "Monitor configurations with pattern matching",
@@ -69,6 +74,23 @@
         "show_numbers": {
           "type": "boolean",
           "description": "Show workspace numbers (for workspaces module)"
+        },
+        "show_wallpaper": {
+          "type": "boolean",
+          "description": "Show workspace wallpaper thumbnails (for workspaces module)"
+        },
+        "default_wallpaper": {
+          "type": "string",
+          "description": "Default wallpaper path used when no workspace-specific image is set"
+        },
+        "wallpapers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Map of workspace index or name to wallpaper path"
+        },
+        "special_cmd": {
+          "type": "string",
+          "description": "Override command to set wallpaper; supports ${current_workspace_image} substitution"
         },
         "max_length": {
           "type": "integer",
@@ -155,10 +177,10 @@
           "type": "string",
           "description": "Regex pattern to match monitor names"
         },
-        "enabled": {
+        "show_bar": {
           "type": "boolean",
           "default": true,
-          "description": "Enable/disable this monitor"
+          "description": "Show the bar on this monitor"
         },
         "layout": {
           "$ref": "#/definitions/LayoutConfig",
@@ -170,9 +192,88 @@
           "additionalProperties": {
             "$ref": "#/definitions/ModuleConfig"
           }
+        },
+        "wallpapers": {
+          "$ref": "#/definitions/WallpaperConfig",
+          "description": "Monitor-specific wallpaper settings (overrides global)",
+          "deprecated": true
         }
       },
       "required": ["match"],
+      "additionalProperties": false
+    },
+    "WallpaperConfig": {
+      "type": "object",
+      "description": "Wallpaper configuration with per-workspace mapping",
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Default wallpaper path used when no workspace-specific image is set"
+        },
+        "by_workspace": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Map of workspace index or name to wallpaper path"
+        },
+        "special_cmd": {
+          "type": "string",
+          "description": "Override command to set wallpaper; supports ${current_workspace_image} substitution"
+        },
+        "swww_options": {
+          "$ref": "#/definitions/SwwwOptions",
+          "description": "Swww-specific options for wallpaper transitions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SwwwOptions": {
+      "type": "object",
+      "description": "Swww-specific options for wallpaper transitions",
+      "properties": {
+        "transition_type": {
+          "type": "string",
+          "enum": ["none", "simple", "fade", "left", "right", "top", "bottom", "wipe", "wave", "grow", "center", "any", "outer", "random"],
+          "default": "simple",
+          "description": "Type of transition effect"
+        },
+        "transition_duration": {
+          "type": "number",
+          "minimum": 0.0,
+          "default": 1.0,
+          "description": "Transition duration in seconds"
+        },
+        "transition_step": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 255,
+          "default": 90,
+          "description": "Transition step (0-255, higher = faster)"
+        },
+        "transition_fps": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Frame rate for transition effects"
+        },
+        "filter": {
+          "type": "string",
+          "enum": ["Nearest", "Bilinear", "CatmullRom", "Mitchell", "Lanczos3"],
+          "default": "Lanczos3",
+          "description": "Filter for image scaling"
+        },
+        "resize": {
+          "type": "string",
+          "enum": ["no", "crop", "fit", "stretch"],
+          "default": "crop",
+          "description": "Resize method for images"
+        },
+        "fill_color": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{6}$",
+          "default": "000000",
+          "description": "Fill color for padding (hex code without #)"
+        }
+      },
       "additionalProperties": false
     },
     "LoggingConfig": {

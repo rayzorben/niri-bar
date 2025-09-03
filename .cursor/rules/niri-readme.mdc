@@ -1,0 +1,9 @@
+---
+description: readme instructions
+globs:
+alwaysApply: true
+---
+- start with what is niri-bar a very concise explanation of what it is, its goal of being niri specific and fully customizable and other short relevant details
+- how to download from https://github.com/rayzorben/niri-bar and run as well as test
+- what are the available modules and options to those modules
+- what are the options for application, bar, per-monitor specific instructions

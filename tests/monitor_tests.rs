@@ -428,3 +428,47 @@ fn test_monitor_info_debug() {
     assert!(debug_str.contains("2560"));
     assert!(debug_str.contains("1440"));
 }
+
+// ===== COMPREHENSIVE MONITOR TESTS =====
+
+// ===== PROPERTY-BASED TESTS =====
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_monitor_info_arbitrary_creation(
+            connector in "[a-zA-Z0-9\\-_]+",
+            width in 1..10000i32,
+            height in 1..10000i32,
+            scale in 1..5i32,
+        ) {
+            let monitor = MockMonitorInfo::new(&connector, width, height, scale);
+
+            prop_assert_eq!(monitor.connector, connector);
+            prop_assert_eq!(monitor.logical_size, (width, height));
+            prop_assert_eq!(monitor.scale_factor, scale);
+            prop_assert!(monitor.logical_size.0 > 0);
+            prop_assert!(monitor.logical_size.1 > 0);
+            prop_assert!(monitor.scale_factor > 0);
+        }
+
+        #[test]
+        fn test_monitor_info_clone_properties(
+            connector in "[a-zA-Z0-9\\-_]+",
+            width in 1..5000i32,
+            height in 1..5000i32,
+            scale in 1..3i32,
+        ) {
+            let original = MockMonitorInfo::new(&connector, width, height, scale);
+            let cloned = original.clone();
+
+            prop_assert_eq!(original.connector, cloned.connector);
+            prop_assert_eq!(original.logical_size, cloned.logical_size);
+            prop_assert_eq!(original.scale_factor, cloned.scale_factor);
+        }
+    }
+}

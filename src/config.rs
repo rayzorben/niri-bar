@@ -7,7 +7,16 @@ use tokio::sync::broadcast;
 use anyhow::Result;
 
 /// Text alignment options
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// # Examples
+///
+/// ```
+/// use niri_bar::config::TextAlign;
+///
+/// let align = TextAlign::Center;
+/// assert_eq!(align, TextAlign::Center);
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TextAlign {
     #[serde(rename = "left")]
     Left,
@@ -22,7 +31,7 @@ impl Default for TextAlign {
 }
 
 /// Display visibility options
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DisplayMode {
     #[serde(rename = "show")]
     Show,
@@ -35,7 +44,7 @@ impl Default for DisplayMode {
 }
 
 /// Module configuration with YAML anchor support
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ModuleConfig {
     #[serde(default)]
     pub format: Option<String>,
@@ -45,6 +54,17 @@ pub struct ModuleConfig {
     pub highlight_active: Option<bool>,
     #[serde(default)]
     pub show_numbers: Option<bool>,
+    #[serde(default)]
+    pub show_wallpaper: Option<bool>,
+    #[serde(default)]
+    pub default_wallpaper: Option<String>,
+    #[serde(default)]
+    pub wallpapers: Option<HashMap<String, String>>, // map by index or name → path
+    #[serde(default)]
+    pub special_cmd: Option<String>, // e.g., "mytool -i ${current_workspace_image}"
+    /// Swww-specific options for wallpaper transitions when used by wallpapers module
+    #[serde(default)]
+    pub swww_options: Option<SwwwOptions>,
     #[serde(default)]
     pub max_length: Option<usize>,
     #[serde(default)]
@@ -72,7 +92,7 @@ pub struct ModuleConfig {
 }
 
 /// Column overflow behavior
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ColumnOverflowPolicy {
     #[serde(rename = "hide", alias = "crop")] // accept legacy name "crop"
     Hide,
@@ -87,7 +107,7 @@ impl Default for ColumnOverflowPolicy {
 // Removed ColumnSize in favor of simpler equal-width behavior + optional fixed width per column
 
 /// Per-column spec: modules + overflow policy
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ColumnSpec {
     #[serde(default)]
     pub modules: Vec<String>,
@@ -105,27 +125,82 @@ pub struct ColumnSpec {
 }
 
 /// Layout configuration with column mapping
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LayoutConfig {
     #[serde(default)]
     pub columns: IndexMap<String, ColumnSpec>,
 }
 
 /// Monitor configuration with layout and module overrides
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MonitorConfig {
     #[serde(rename = "match")]
     pub match_pattern: String,
-    #[serde(default = "default_enabled")]
-    pub enabled: bool,
+    /// Whether to show the bar on this monitor
+    #[serde(default = "default_enabled", alias = "enabled")]
+    pub show_bar: bool,
     #[serde(default)]
     pub layout: Option<LayoutConfig>,
     #[serde(default)]
     pub modules: Option<HashMap<String, ModuleConfig>>,
+    /// Monitor-specific wallpaper settings (overrides global)
+    #[serde(default)]
+    pub wallpapers: Option<WallpaperConfig>,
+}
+
+/// Swww-specific options for wallpaper transitions
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct SwwwOptions {
+    /// Transition type (none, simple, fade, left, right, top, bottom, wipe, wave, grow, center, any, outer, random)
+    #[serde(default = "default_transition_type")]
+    pub transition_type: String,
+    /// Transition duration in seconds
+    #[serde(default = "default_transition_duration")]
+    pub transition_duration: f64,
+    /// Transition step (0-255, higher = faster)
+    #[serde(default = "default_transition_step")]
+    pub transition_step: u8,
+    /// Transition FPS
+    #[serde(default = "default_transition_fps")]
+    pub transition_fps: u8,
+    /// Filter for image scaling (Nearest, Bilinear, CatmullRom, Mitchell, Lanczos3)
+    #[serde(default = "default_filter")]
+    pub filter: String,
+    /// Resize method (no, crop, fit, stretch)
+    #[serde(default = "default_resize")]
+    pub resize: String,
+    /// Fill color for padding (hex code without #)
+    #[serde(default = "default_fill_color")]
+    pub fill_color: String,
+}
+
+fn default_transition_type() -> String { "simple".to_string() }
+fn default_transition_duration() -> f64 { 1.0 }
+fn default_transition_step() -> u8 { 90 }
+fn default_transition_fps() -> u8 { 30 }
+fn default_filter() -> String { "Lanczos3".to_string() }
+fn default_resize() -> String { "crop".to_string() }
+fn default_fill_color() -> String { "000000".to_string() }
+
+/// Wallpaper configuration with per-workspace mapping
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct WallpaperConfig {
+    /// Default wallpaper path
+    #[serde(default)]
+    pub default: Option<String>,
+    /// Map of workspace index or name to wallpaper path
+    #[serde(default)]
+    pub by_workspace: HashMap<String, String>,
+    /// Override command to set wallpaper; supports ${current_workspace_image} substitution
+    #[serde(default)]
+    pub special_cmd: Option<String>,
+    /// Swww-specific options for wallpaper transitions
+    #[serde(default)]
+    pub swww_options: Option<SwwwOptions>,
 }
 
 /// Application-level configuration with YAML anchors
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApplicationConfig {
     /// CSS theme to use for styling the bar
     #[serde(default = "default_theme")]
@@ -134,6 +209,9 @@ pub struct ApplicationConfig {
     pub modules: HashMap<String, ModuleConfig>,
     /// Reusable layout profiles (YAML anchors)
     pub layouts: HashMap<String, LayoutConfig>,
+    /// Global wallpaper settings
+    #[serde(default)]
+    pub wallpapers: WallpaperConfig,
     /// Monitor configurations with pattern matching
     pub monitors: Vec<MonitorConfig>,
 }
@@ -144,7 +222,7 @@ fn default_theme() -> String {
 }
 
 /// Logging configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LoggingConfig {
     pub level: String,
     pub file: String,
@@ -160,7 +238,7 @@ pub struct LoggingConfig {
 }
 
 /// Complete configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NiriBarConfig {
     pub application: ApplicationConfig,
     #[serde(default = "default_logging_config")]
@@ -366,6 +444,26 @@ impl ConfigManager {
     }
 
     /// Parse YAML content into configuration structure
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use niri_bar::config::ConfigManager;
+    ///
+    /// let yaml_content = r#"
+    /// application:
+    ///   modules: {}
+    ///   layouts: {}
+    ///   monitors: []
+    /// logging:
+    ///   level: "info"
+    ///   file: "/tmp/test.log"
+    ///   console: true
+    /// "#;
+    ///
+    /// let config = ConfigManager::parse_config(yaml_content.as_bytes()).unwrap();
+    /// assert_eq!(config.logging.level, "info");
+    /// ```
     pub fn parse_config(content: &[u8]) -> Result<NiriBarConfig> {
         let content_str = String::from_utf8(content.to_vec())?;
         
@@ -395,7 +493,7 @@ impl ConfigManager {
     }
 
     /// Basic configuration validation
-    fn basic_validation(config: &NiriBarConfig) -> Result<()> {
+    pub fn basic_validation(config: &NiriBarConfig) -> Result<()> {
         // Validate logging level
         let valid_levels = ["debug", "info", "warn", "error"];
         if !valid_levels.contains(&config.logging.level.as_str()) {
@@ -441,7 +539,7 @@ impl ConfigManager {
             }
         }
 
-        best_match.map(|config| config.enabled).unwrap_or(false)
+        best_match.map(|config| config.show_bar).unwrap_or(false)
     }
 
     /// Calculate pattern specificity (higher = more specific)

@@ -14,6 +14,26 @@ pub struct NiriBarLogger {
 
 impl NiriBarLogger {
     /// Create a new logger with the given configuration
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use niri_bar::logger::NiriBarLogger;
+    /// use niri_bar::config::LoggingConfig;
+    ///
+    /// let config = LoggingConfig {
+    ///     level: "info".to_string(),
+    ///     file: "/tmp/test.log".to_string(),
+    ///     console: true,
+    ///     format: "iso8601".to_string(),
+    ///     include_file: true,
+    ///     include_line: true,
+    ///     include_class: true,
+    /// };
+    ///
+    /// let logger = NiriBarLogger::new(config).unwrap();
+    /// // Logger is ready to use
+    /// ```
     pub fn new(config: LoggingConfig) -> Result<Self, io::Error> {
         let file_handle = if !config.file.is_empty() {
             let expanded_path = shellexpand::tilde(&config.file).to_string();
@@ -41,6 +61,29 @@ impl NiriBarLogger {
     }
 
     /// Initialize the global logger with the given configuration
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use niri_bar::logger::NiriBarLogger;
+    /// use niri_bar::config::LoggingConfig;
+    ///
+    /// let config = LoggingConfig {
+    ///     level: "debug".to_string(),
+    ///     file: "/tmp/test.log".to_string(),
+    ///     console: true,
+    ///     format: "iso8601".to_string(),
+    ///     include_file: true,
+    ///     include_line: true,
+    ///     include_class: true,
+    /// };
+    ///
+    /// // Initialize the global logger
+    /// NiriBarLogger::init(config).unwrap();
+    ///
+    /// // Now you can use log macros
+    /// log::info!("Logger initialized!");
+    /// ```
     pub fn init(config: LoggingConfig) -> Result<(), Box<dyn std::error::Error>> {
         let level_filter = match config.level.to_lowercase().as_str() {
             "trace" => LevelFilter::Trace,

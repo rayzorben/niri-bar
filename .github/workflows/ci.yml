@@ -1,0 +1,292 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy, miri
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rust }}
+
+      - name: Install testing tools
+        run: |
+          cargo install cargo-llvm-cov cargo-mutants cargo-nextest
+          # Optional: cargo install cargo-audit cargo-outdated
+
+      - name: Run comprehensive test suite
+        run: ./ci/test_all.sh
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: matrix.rust == 'stable'
+        with:
+          file: ./lcov.info
+          flags: rust
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  # Separate job for slower mutation testing
+  mutation-test:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install mutation testing tools
+        run: cargo install cargo-mutants
+
+      - name: Run mutation testing (sampled)
+        run: |
+          # Run mutation testing with shorter timeout for CI
+          cargo mutants --workspace --timeout 5 --in-place --unmutated-ok --no-shuffle || true
+        env:
+          RUST_BACKTRACE: 1
+
+  # Security audit job
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+
+  # MSRV check
+  msrv:
+    name: Minimum Supported Rust Version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (MSRV)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.70.0"  # Update this to match your MSRV
+
+      - name: Check MSRV compatibility
+        run: |
+          cargo check --workspace
+          cargo test --workspace --lib
+
+  # Documentation check
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check documentation
+        run: |
+          cargo doc --workspace --no-deps
+          # Check that docs build without warnings
+          RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+  # Formatting and linting (fast feedback)
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features --workspace -D warnings
+
+  # Performance regression check
+  bench:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run benchmarks
+        run: |
+          cargo bench || echo "No benchmarks found"
+
+  # Platform compatibility
+  cross-platform:
+    name: Cross-platform
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          # Windows support can be added later if needed
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Run tests
+        run: cargo test --workspace --target ${{ matrix.target }}
+
+  # Release check
+  release:
+    name: Release Build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        run: cargo build --release --workspace
+
+      - name: Run tests in release mode
+        run: cargo test --release --workspace
+
+      - name: Check binary size
+        run: |
+          ls -lh target/release/niri-bar
+          # Could add size regression checks here
+
+  # Dependency vulnerability check
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Audit dependencies
+        run: cargo audit
+
+      - name: Check for outdated dependencies
+        run: |
+          cargo install cargo-outdated || true
+          cargo outdated --workspace || echo "cargo-outdated not available"
+
+  # Code quality metrics
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install quality tools
+        run: |
+          cargo install cargo-llvm-cov cargo-cyclomatic-complexity
+
+      - name: Check code complexity
+        run: |
+          # Check cyclomatic complexity
+          cargo cyclomatic-complexity || echo "Complexity check not available"
+
+      - name: Check for TODO comments
+        run: |
+          # Count TODO/FIXME comments
+          todo_count=$(grep -r "TODO\|FIXME\|XXX" src/ | wc -l)
+          if [ "$todo_count" -gt 10 ]; then
+            echo "Warning: Found $todo_count TODO/FIXME comments"
+          fi
+
+      - name: Check for unsafe code
+        run: |
+          unsafe_count=$(grep -r "unsafe" src/ | grep -v "//" | wc -l)
+          if [ "$unsafe_count" -gt 0 ]; then
+            echo "Found $unsafe_count unsafe blocks - ensure they are properly documented"
+          fi
+
+  # Final summary
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test, lint, docs]
+    if: always()
+    steps:
+      - name: Test Summary
+        run: |
+          echo "=========================================="
+          echo "🏆 CI PIPELINE SUMMARY"
+          echo "=========================================="
+          echo "Test Suite: ${{ needs.test.result }}"
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Documentation: ${{ needs.docs.result }}"
+          echo "=========================================="
+
+          if [ "${{ needs.test.result }}" == "success" ] && \
+             [ "${{ needs.lint.result }}" == "success" ] && \
+             [ "${{ needs.docs.result }}" == "success" ]; then
+            echo "✅ All core quality gates passed!"
+          else
+            echo "❌ Some quality gates failed - please review"
+            exit 1
+          fi

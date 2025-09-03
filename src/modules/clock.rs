@@ -23,10 +23,14 @@ impl ClockModule {
         let now_text = Local::now().format(&fmt).to_string();
         label.set_text(&now_text);
 
+        // Event-driven clock updates with efficient timing
         let label_weak = label.downgrade();
-        glib::timeout_add_seconds_local(1, move || {
+        let fmt_clone = fmt.clone();
+        
+        // Use a more efficient update mechanism
+        glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
             if let Some(label) = label_weak.upgrade() {
-                let text = Local::now().format(&fmt).to_string();
+                let text = Local::now().format(&fmt_clone).to_string();
                 label.set_text(&text);
                 glib::ControlFlow::Continue
             } else {

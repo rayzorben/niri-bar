@@ -1,4 +1,4 @@
-use crate::config::{ConfigManager, LoggingConfig, ModuleConfig};
+use crate::config::{ConfigManager, LoggingConfig};
 use crate::monitor::Monitor;
 use gtk4::prelude::*;
 use gtk4::{Application as GtkApplication};
@@ -14,7 +14,7 @@ use glib::ControlFlow;
 
 /// Main application class that manages the entire niri-bar program
 pub struct Application {
-    gtk_app: GtkApplication,
+    gtk_app: Option<GtkApplication>,
     pub monitors: Arc<Mutex<HashMap<String, Monitor>>>,
     config_manager: ConfigManager,
     logging_config: LoggingConfig,
@@ -23,17 +23,47 @@ pub struct Application {
 
 impl Application {
     /// Create a new application instance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use niri_bar::application::Application;
+    /// use niri_bar::config::LoggingConfig;
+    ///
+    /// let logging_config = LoggingConfig {
+    ///     level: "debug".to_string(),
+    ///     file: "/tmp/test.log".to_string(),
+    ///     console: true,
+    ///     format: "iso8601".to_string(),
+    ///     include_file: true,
+    ///     include_line: true,
+    ///     include_class: true,
+    /// };
+    ///
+    /// let app = Application::new(logging_config).unwrap();
+    /// assert_eq!(app.monitor_count(), 0);
+    /// ```
     pub fn new(logging_config: LoggingConfig) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::new_with_gtk(logging_config, true)
+    }
+
+    /// Create a new application instance with optional GTK initialization
+    /// This is primarily for testing purposes to avoid GTK hangs in headless environments
+    pub fn new_with_gtk(logging_config: LoggingConfig, init_gtk: bool) -> Result<Self, Box<dyn std::error::Error>> {
         log::info!("Application: Initializing Niri Bar Application...");
-        
-        // Create the GTK application
-        let gtk_app = GtkApplication::builder()
-            .application_id("com.niri.bar")
-            .build();
+
+        // Create the GTK application (optional for testing)
+        let gtk_app = if init_gtk {
+            Some(GtkApplication::builder()
+                .application_id("com.niri.bar")
+                .build())
+        } else {
+            None
+        };
 
         // Create async runtime for config management
         let runtime = Runtime::new()?;
-        
+
         // Create config manager
         let config_manager = ConfigManager::new();
 
@@ -50,40 +80,48 @@ impl Application {
     /// Start the application
     pub fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         log::info!("Application: Starting Niri Bar Application...");
-        
-        // Set up the application activation handler
-        self.gtk_app.connect_activate({
-            let app = self.gtk_app.clone();
-            let monitors = self.monitors.clone();
-            let config_manager = self.config_manager.clone();
-            move |gtk_app| {
-                log::info!("Application: 🎯 GTK Application activated!");
-                Self::on_application_activate(gtk_app, &app, &monitors, &config_manager);
-                // Start Niri IPC event stream if NIRI_SOCKET is set
-                if std::env::var("NIRI_SOCKET").is_ok() {
-                    match crate::niri::NiriIpc::new() {
-                        Ok(niri) => {
-                            if let Err(e) = niri.start_event_stream() {
-                                log::warn!("Application: Niri IPC event stream failed to start: {}", e);
-                            } else {
-                                log::info!("Application: 🛰️ Niri IPC event stream attached (dumping to stdout)");
+
+        if self.gtk_app.is_some() {
+            // Set up the application activation handler
+            if let Some(ref gtk_app) = self.gtk_app {
+                gtk_app.connect_activate({
+                    let app = gtk_app.clone();
+                    let monitors = self.monitors.clone();
+                    let config_manager = self.config_manager.clone();
+                    move |gtk_app| {
+                        log::info!("Application: 🎯 GTK Application activated!");
+                        Self::on_application_activate(gtk_app, &app, &monitors, &config_manager);
+                        // Start Niri IPC event stream if NIRI_SOCKET is set
+                        if std::env::var("NIRI_SOCKET").is_ok() {
+                            match crate::niri::NiriIpc::new() {
+                                Ok(niri) => {
+                                    if let Err(e) = niri.start_event_stream() {
+                                        log::warn!("Application: Niri IPC event stream failed to start: {}", e);
+                                    } else {
+                                        log::info!("Application: 🛰️ Niri IPC event stream attached (dumping to stdout)");
+                                    }
+                                }
+                                Err(e) => log::warn!("Application: Niri IPC init failed: {}", e),
                             }
+                        } else {
+                            log::info!("Application: NIRI_SOCKET not set; skipping Niri IPC");
                         }
-                        Err(e) => log::warn!("Application: Niri IPC init failed: {}", e),
                     }
-                } else {
-                    log::info!("Application: NIRI_SOCKET not set; skipping Niri IPC");
-                }
+                });
             }
-        });
 
-        // Set up a timer to check for config changes periodically
-        self.setup_config_checking();
+            // Set up a timer to check for config changes periodically
+            self.setup_config_checking();
 
-        log::info!("Application: 🚀 Starting GTK main loop...");
-        
-        // Start the GTK main loop (this will trigger activation)
-        self.gtk_app.run();
+            log::info!("Application: 🚀 Starting GTK main loop...");
+
+            // Start the GTK main loop (this will trigger activation)
+            if let Some(ref gtk_app) = self.gtk_app {
+                gtk_app.run();
+            }
+        } else {
+            log::info!("Application: Skipping GTK initialization (test mode)");
+        }
         
         log::info!("Application: Application shutdown complete");
         Ok(())
@@ -134,9 +172,10 @@ impl Application {
         });
 
         // Handle file change events in GTK main thread (recurring)
-        let gtk_app = self.gtk_app.clone();
-        let monitors = self.monitors.clone();
-        let config_manager = self.config_manager.clone();
+        if let Some(ref gtk_app) = self.gtk_app {
+            let gtk_app = gtk_app.clone();
+            let monitors = self.monitors.clone();
+            let config_manager = self.config_manager.clone();
         // Receiver must be mutable across calls; wrap in RefCell
         let rx = std::cell::RefCell::new(rx);
 
@@ -160,6 +199,9 @@ impl Application {
 
             ControlFlow::Continue
         });
+        } else {
+            log::info!("Application: Skipping file watching (test mode - no GTK)");
+        }
     }
 
     /// Reload configuration and update all bars
@@ -200,7 +242,7 @@ impl Application {
                         
                         let scale_factor = gdk_monitor.scale_factor();
                         
-                        // Check if monitor should be enabled
+                        // Check if monitor should display a bar (renamed from enabled)
                         let should_enable = config_manager.is_monitor_enabled(&connector);
                         let new_theme = &config.application.theme;
                         
@@ -283,8 +325,7 @@ impl Application {
                     if s > best_spec { best = Some(m); best_spec = s; }
                 }
             }
-            if let Some(m) = best
-                && let Some(mods) = &m.modules {
+            if let Some(m) = best && let Some(mods) = &m.modules {
                 for (name, mc) in mods {
                     if let Some(fmt) = mc.format.clone() {
                         map.insert(name.clone(), fmt);
@@ -295,7 +336,9 @@ impl Application {
         map
     }
 
-    fn collect_module_configs(config_manager: &ConfigManager, connector: &str) -> std::collections::HashMap<String, ModuleConfig> {
+    fn collect_module_configs(config_manager: &ConfigManager, connector: &str)
+        -> std::collections::HashMap<String, crate::config::ModuleConfig>
+    {
         let mut map = std::collections::HashMap::new();
         // read current config
         let config_guard = config_manager.config.lock().unwrap();
@@ -317,7 +360,50 @@ impl Application {
             if let Some(m) = best
                 && let Some(mods) = &m.modules {
                 for (name, mc) in mods {
-                    map.insert(name.clone(), mc.clone());
+                    // Merge by replacing entire module config for simplicity
+                    let mut merged = map.get(name).cloned().unwrap_or_default();
+                    // Overlay only explicitly provided fields
+                    if mc.format.is_some() { merged.format = mc.format.clone(); }
+                    if mc.tooltip.is_some() { merged.tooltip = mc.tooltip; }
+                    if mc.highlight_active.is_some() { merged.highlight_active = mc.highlight_active; }
+                    if mc.show_numbers.is_some() { merged.show_numbers = mc.show_numbers; }
+                    if mc.show_wallpaper.is_some() { merged.show_wallpaper = mc.show_wallpaper; }
+                    if mc.max_length.is_some() { merged.max_length = mc.max_length; }
+                    if mc.ellipsize.is_some() { merged.ellipsize = mc.ellipsize.clone(); }
+                    if mc.show_percentage.is_some() { merged.show_percentage = mc.show_percentage; }
+                    if mc.warn_threshold.is_some() { merged.warn_threshold = mc.warn_threshold; }
+                    if mc.critical_threshold.is_some() { merged.critical_threshold = mc.critical_threshold; }
+                    if mc.cpu.is_some() { merged.cpu = mc.cpu; }
+                    if mc.mem.is_some() { merged.mem = mc.mem; }
+                    if mc.net.is_some() { merged.net = mc.net; }
+                    if mc.enabled.is_some() { merged.enabled = mc.enabled; }
+                    if mc.display.is_some() { merged.display = mc.display.clone(); }
+                    // Pass through any additional fields
+                    if !mc.additional.is_empty() { merged.additional.extend(mc.additional.clone()); }
+                    // Wallpaper-specific per-module overrides if present on monitor
+                    if mc.default_wallpaper.is_some() { merged.default_wallpaper = mc.default_wallpaper.clone(); }
+                    if mc.wallpapers.is_some() { merged.wallpapers = mc.wallpapers.clone(); }
+                    if mc.special_cmd.is_some() { merged.special_cmd = mc.special_cmd.clone(); }
+                    map.insert(name.clone(), merged);
+                }
+            }
+
+            // If workspaces module wants thumbnails but lacks wallpaper config,
+            // inherit from the wallpaper module config to keep things DRY
+            if map.contains_key("workspaces") && map.contains_key("wallpaper") {
+                let wp_clone = map.get("wallpaper").cloned();
+                if let Some(wp) = wp_clone && let Some(ws_entry) = map.get_mut("workspaces") {
+                    if ws_entry.default_wallpaper.is_none() {
+                        ws_entry.default_wallpaper = wp.default_wallpaper.clone();
+                    }
+                    if (ws_entry.wallpapers.is_none() || ws_entry.wallpapers.as_ref().is_some_and(|m| m.is_empty()))
+                        && wp.wallpapers.as_ref().is_some_and(|m| !m.is_empty())
+                    {
+                        ws_entry.wallpapers = wp.wallpapers.clone();
+                    }
+                    if ws_entry.special_cmd.is_none() {
+                        ws_entry.special_cmd = wp.special_cmd.clone();
+                    }
                 }
             }
         }
@@ -341,12 +427,37 @@ impl Application {
         log::info!("Application: 🎊 Initial monitor setup complete!");
         log::info!("Application: Configuration-driven bar display active!");
         log::info!("Application: 🔄 Hot-reload enabled for YAML and CSS changes!");
+
+        // Wallpaper switching is now handled by the workspaces module directly
+        // No need for workspace focus callbacks in the simplified architecture
     }
 
     /// Get the number of monitors
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use niri_bar::application::Application;
+    /// use niri_bar::config::LoggingConfig;
+    ///
+    /// let logging_config = LoggingConfig {
+    ///     level: "info".to_string(),
+    ///     file: "".to_string(),
+    ///     console: true,
+    ///     format: "iso8601".to_string(),
+    ///     include_file: true,
+    ///     include_line: true,
+    ///     include_class: true,
+    /// };
+    ///
+    /// let app = Application::new(logging_config).unwrap();
+    /// assert_eq!(app.monitor_count(), 0); // No monitors initially
+    /// ```
     pub fn monitor_count(&self) -> usize {
         self.monitors.lock().unwrap().len()
     }
+
+
 
     /// Get the logging configuration
     pub fn get_logging_config(&self) -> &LoggingConfig {

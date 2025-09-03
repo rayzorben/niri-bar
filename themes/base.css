@@ -235,6 +235,13 @@ label {
   background: var(--column-bg);
 }
 
+.module-wallpapers {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--column-bg);
+}
+
 /* ===== SPECIFIC MONITOR-MODULE COMBINATIONS ===== */
 /* Override these in theme files for monitor-specific styling */
 #monitor-eDP-1 #column-left #module-workspaces label { color: var(--module-workspaces); }
@@ -273,6 +280,23 @@ label:hover {
     background: var(--hover-bg);
     color: var(--text-primary);
     transition: transform 250ms ease, background-color 150ms ease;
+}
+
+/* Ensure background images on workspace buttons fill and crop */
+.workspace-thumb,
+.workspace-overlay,
+.workspace-pill {
+  border-radius: 3px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.workspace-label {
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 0 2px #000, 0 0 4px #000, 0 0 6px #000;
+  padding: 0 6px;
 }
 
 .workspace-pill:hover {

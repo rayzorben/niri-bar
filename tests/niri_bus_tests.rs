@@ -21,6 +21,9 @@ fn test_niri_bus_initial_focus_and_title() {
 #[test]
 fn test_niri_bus_workspace_activation_and_scroll_like_changes() {
     let bus = niri_bus();
+    
+    // Reset bus state for test isolation
+    bus.reset();
 
     // Seed three workspaces, focus idx 1
     bus.handle_json_line(
@@ -32,5 +35,25 @@ fn test_niri_bus_workspace_activation_and_scroll_like_changes() {
     let list = bus.workspaces_snapshot();
     assert!(list.iter().any(|w| w.id == 2 && w.is_focused));
     assert!(list.iter().any(|w| w.id == 1 && !w.is_focused));
+}
+
+#[test]
+fn test_keyboard_layouts_and_overview_events() {
+    let bus = niri_bus();
+    bus.reset();
+
+    // Send keyboard layouts changed
+    bus.handle_json_line(
+        "{\"KeyboardLayoutsChanged\":{\"keyboard_layouts\":{\"names\":[\"English (US)\",\"English (Intl)\"],\"current_idx\":1}}}",
+    );
+    let (names, idx) = bus.keyboard_layouts_snapshot();
+    assert_eq!(names, vec!["English (US)", "English (Intl)" ]);
+    assert_eq!(idx, Some(1));
+
+    // Overview open/close
+    bus.handle_json_line("{\"OverviewOpenedOrClosed\":{\"is_open\":true}} ");
+    assert!(bus.is_overview_open());
+    bus.handle_json_line("{\"OverviewOpenedOrClosed\":{\"is_open\":false}} ");
+    assert!(!bus.is_overview_open());
 }
 

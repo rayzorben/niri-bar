@@ -1,12 +1,17 @@
 use gtk4 as gtk;
 use gtk4::prelude::*;
 // use gdk_pixbuf::Pixbuf;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::collections::HashMap;
 use anyhow::Result;
 use glib;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::mpsc;
+
+// Type aliases for complex types
+type WindowColumnData = (i64, i64, f64, f64, String, bool); // (win_id, y_index, w_px, h_px, title, is_focused)
+type WindowColumnMap = std::collections::BTreeMap<i64, Vec<WindowColumnData>>;
+type OrderedColumns = Vec<(i64, Vec<WindowColumnData>)>;
 
 use crate::config::ModuleConfig;
 use crate::niri::niri_bus;
@@ -29,11 +34,15 @@ pub struct ScreenCapture {
     _placeholder: bool,
 }
 
+impl Default for ScreenCapture {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScreenCapture {
     pub fn new() -> Self {
-        Self {
-            _placeholder: true,
-        }
+        Self { _placeholder: true }
     }
 
     /// Start screen capture (placeholder implementation)
@@ -74,7 +83,7 @@ impl ViewportModule {
         drawing_area.add_css_class("viewport-canvas");
         drawing_area.set_hexpand(false);
         drawing_area.set_vexpand(true);
-        
+
         // Set initial size
         if let Some(w) = settings.width {
             drawing_area.set_size_request(w.max(20), -1);
@@ -86,7 +95,7 @@ impl ViewportModule {
 
         // Create screen capture manager
         let screen_capture = Rc::new(RefCell::new(ScreenCapture::new()));
-        
+
         // Track current workspace and windows
         let current_workspace_id = Rc::new(RefCell::new(None::<i64>));
         let window_layouts = Rc::new(RefCell::new(HashMap::<i64, WindowLayout>::new()));
@@ -98,7 +107,7 @@ impl ViewportModule {
             let focused_window_ref = Rc::clone(&focused_window_id);
             let screen_capture_ref = Rc::clone(&screen_capture);
             let _drawing_area_weak = drawing_area.downgrade();
-            
+
             drawing_area.set_draw_func(move |_area, cr, width, height| {
                 Self::draw_viewport(
                     cr,
@@ -122,35 +131,47 @@ impl ViewportModule {
             let fixed_width_opt = settings.width;
 
             let (tx, rx) = mpsc::channel::<()>();
-            crate::niri::niri_bus().register_ui_listener(tx);
+            // Only register with niri_bus if not in test environment
+            if !cfg!(test) {
+                crate::niri::niri_bus().register_ui_listener(tx);
+            }
 
-            glib::source::idle_add_local(move || {
-                while rx.try_recv().is_ok() {}
-                if let Some(area) = drawing_area_weak.upgrade() {
-                    if let Some((workspace_width, workspace_height)) = Self::update_viewport_state(
-                        &current_workspace_ref,
-                        &window_layouts_ref,
-                        &focused_window_ref,
-                        &screen_capture_ref,
-                    ) {
-                        if fixed_width_opt.is_none() {
-                            let current_height = area.allocated_height() as f64;
-                            if current_height > 0.0 {
-                                let workspace_aspect_ratio = workspace_width / workspace_height;
-                                let target_width = (current_height * workspace_aspect_ratio).round() as i32;
-                                let target_width = target_width.max(40);
-                                if (area.allocated_width() - target_width).abs() > 2 {
-                                    area.set_size_request(target_width, -1);
-                                    log::debug!("Viewport: Resized to {}x{} (aspect ratio: {:.2})",
-                                        target_width, current_height as i32, workspace_aspect_ratio);
+            // Only set up event loop if not in test environment
+            if !cfg!(test) {
+                glib::source::idle_add_local(move || {
+                    while rx.try_recv().is_ok() {}
+                    if let Some(area) = drawing_area_weak.upgrade() {
+                        if let Some((workspace_width, workspace_height)) =
+                            Self::update_viewport_state(
+                                &current_workspace_ref,
+                                &window_layouts_ref,
+                                &focused_window_ref,
+                                &screen_capture_ref,
+                            )
+                            && fixed_width_opt.is_none()
+                        {
+                                let current_height = area.allocated_height() as f64;
+                                if current_height > 0.0 {
+                                    let workspace_aspect_ratio = workspace_width / workspace_height;
+                                    let target_width =
+                                        (current_height * workspace_aspect_ratio).round() as i32;
+                                    let target_width = target_width.max(40);
+                                    if (area.allocated_width() - target_width).abs() > 2 {
+                                        area.set_size_request(target_width, -1);
+                                        log::debug!(
+                                            "Viewport: Resized to {}x{} (aspect ratio: {:.2})",
+                                            target_width,
+                                            current_height as i32,
+                                            workspace_aspect_ratio
+                                        );
+                                    }
                                 }
                             }
-                        }
+                        area.queue_draw();
                     }
-                    area.queue_draw();
-                }
-                glib::ControlFlow::Continue
-            });
+                    glib::ControlFlow::Continue
+                });
+            }
         }
 
         container.append(&drawing_area);
@@ -163,23 +184,24 @@ impl ViewportModule {
         window_layouts: &Rc<RefCell<HashMap<i64, WindowLayout>>>,
         focused_window_id: &Rc<RefCell<Option<i64>>>,
         screen_capture: &Rc<RefCell<ScreenCapture>>,
-    ) -> Option<(f64, f64)> { // Returns workspace dimensions for aspect ratio calculation
+    ) -> Option<(f64, f64)> {
+        // Returns workspace dimensions for aspect ratio calculation
         let bus = niri_bus();
         let workspaces = bus.workspaces_snapshot();
-        
+
         // Find the currently focused workspace
         let focused_workspace = workspaces.iter().find(|ws| ws.is_focused);
-        
+
         if let Some(workspace) = focused_workspace {
             let mut needs_capture_restart = false;
-            
+
             // Check if workspace changed
-            if let Ok(mut current_ws) = current_workspace_id.try_borrow_mut() {
-                if current_ws.as_ref() != Some(&workspace.id) {
-                    *current_ws = Some(workspace.id);
-                    needs_capture_restart = true;
-                    log::info!("Viewport: Workspace changed to {}", workspace.id);
-                }
+            if let Ok(mut current_ws) = current_workspace_id.try_borrow_mut()
+                && current_ws.as_ref() != Some(&workspace.id)
+            {
+                *current_ws = Some(workspace.id);
+                needs_capture_restart = true;
+                log::info!("Viewport: Workspace changed to {}", workspace.id);
             }
 
             // Update focused window from bus snapshot to be authoritative
@@ -193,16 +215,16 @@ impl ViewportModule {
 
             // Get windows for current workspace and update layouts
             let workspace_windows = bus.windows_for_workspace(workspace.id);
-            
+
             if let Ok(mut layouts) = window_layouts.try_borrow_mut() {
                 layouts.clear();
-                
+
                 // Find the workspace bounds to normalize window positions
                 let mut min_x = f64::MAX;
                 let mut min_y = f64::MAX;
                 let mut max_x = f64::MIN;
                 let mut max_y = f64::MIN;
-                
+
                 // First pass: find workspace bounds
                 for window in &workspace_windows {
                     if let Some(layout) = &window.layout {
@@ -210,21 +232,21 @@ impl ViewportModule {
                         let y = layout.pos_in_scrolling_layout[1];
                         let w = layout.tile_size[0];
                         let h = layout.tile_size[1];
-                        
+
                         min_x = min_x.min(x);
                         min_y = min_y.min(y);
                         max_x = max_x.max(x + w);
                         max_y = max_y.max(y + h);
                     }
                 }
-                
+
                 // Calculate workspace dimensions
                 let workspace_width = if max_x > min_x { max_x - min_x } else { 1920.0 }; // Default to common resolution
                 let workspace_height = if max_y > min_y { max_y - min_y } else { 1080.0 };
-                
+
                 // Second pass: create normalized layout info using per-column grouping
                 use std::collections::BTreeMap;
-                let mut cols: BTreeMap<i64, Vec<(i64, i64, f64, f64, String, bool)>> = BTreeMap::new();
+                let mut cols: WindowColumnMap = BTreeMap::new();
 
                 for window in &workspace_windows {
                     if let Some(l) = &window.layout {
@@ -245,8 +267,7 @@ impl ViewportModule {
                 }
 
                 // Sort columns left-to-right by x index
-                let mut ordered_cols: Vec<(i64, Vec<(i64, i64, f64, f64, String, bool)>)> =
-                    cols.into_iter().collect();
+                let mut ordered_cols: OrderedColumns = cols.into_iter().collect();
                 ordered_cols.sort_by_key(|(x, _)| *x);
 
                 // Column widths are the max width of windows in that column
@@ -259,20 +280,26 @@ impl ViewportModule {
 
                 // Build normalized layouts: each column spans its normalized width; within column, stack by heights over workspace_height
                 let mut x_cursor_norm = 0.0f64;
-                for ((_, mut items), col_w_px) in ordered_cols.into_iter().zip(col_widths.into_iter()) {
+                for ((_, mut items), col_w_px) in
+                    ordered_cols.into_iter().zip(col_widths.into_iter())
+                {
                     // Sort items in column by y_index ascending (top to bottom)
                     items.sort_by_key(|it| it.1);
 
                     let col_w_norm = (col_w_px / total_width_px).clamp(0.0, 1.0);
                     let mut y_cursor_norm = 0.0f64;
                     for (win_id, _y_index, _w_px, h_px, title, is_focused) in items.into_iter() {
-                        let h_norm = if workspace_height > 0.0 { (h_px / workspace_height).clamp(0.0, 1.0) } else { 1.0 };
+                        let h_norm = if workspace_height > 0.0 {
+                            (h_px / workspace_height).clamp(0.0, 1.0)
+                        } else {
+                            1.0
+                        };
 
                         layouts.insert(
                             win_id,
                             WindowLayout {
                                 id: win_id,
-                                title: title,
+                                title,
                                 workspace_id: workspace.id,
                                 is_focused,
                                 x: x_cursor_norm,
@@ -287,26 +314,26 @@ impl ViewportModule {
 
                     x_cursor_norm += col_w_norm;
                 }
-                
+
                 // Return workspace dimensions for aspect ratio calculation
                 return Some((workspace_width, workspace_height));
             }
 
             // Restart screen capture if workspace changed
-            if needs_capture_restart {
-                if let Ok(capture) = screen_capture.try_borrow() {
-                    capture.stop_capture();
-                    
-                    // Start new capture asynchronously
-                    let capture_clone = screen_capture.clone();
-                    glib::spawn_future_local(async move {
-                        if let Ok(capture) = capture_clone.try_borrow() {
-                            if let Err(e) = capture.start_capture().await {
-                                log::error!("Viewport: Failed to start screen capture: {}", e);
-                            }
-                        }
-                    });
-                }
+            if needs_capture_restart
+                && let Ok(capture) = screen_capture.try_borrow()
+            {
+                capture.stop_capture();
+
+                // Start new capture asynchronously
+                let capture_clone = screen_capture.clone();
+                glib::spawn_future_local(async move {
+                    if let Ok(capture) = capture_clone.try_borrow()
+                        && let Err(e) = capture.start_capture().await
+                    {
+                        log::error!("Viewport: Failed to start screen capture: {}", e);
+                    }
+                });
             }
         }
         None
@@ -324,10 +351,10 @@ impl ViewportModule {
     ) {
         let width_f = width as f64;
         let height_f = height as f64;
-        
+
         // Set up the drawing context
         cr.set_antialias(cairo::Antialias::Best);
-        
+
         // Clear the background with a dark workspace color
         cr.set_source_rgba(0.15, 0.15, 0.15, 1.0);
         cr.paint().unwrap();
@@ -341,10 +368,7 @@ impl ViewportModule {
 
         // Draw window overlays and highlights
         if let Ok(layouts) = window_layouts.try_borrow() {
-            let focused_id = focused_window_id
-                .try_borrow()
-                .ok()
-                .and_then(|f| *f);
+            let focused_id = focused_window_id.try_borrow().ok().and_then(|f| *f);
 
             // Sort windows by focus state (focused window on top)
             let mut sorted_layouts: Vec<_> = layouts.values().collect();
@@ -382,7 +406,7 @@ impl ViewportModule {
                     // Normal window border - subtle gray
                     cr.set_source_rgba(0.6, 0.6, 0.6, 0.7);
                 }
-                
+
                 cr.rectangle(x, y, w, h);
                 cr.stroke().unwrap();
 
@@ -390,17 +414,21 @@ impl ViewportModule {
                 if h >= 8.0 && w >= 20.0 && !layout.title.is_empty() {
                     // Calculate appropriate font size based on available space
                     let font_size = (h / 3.0).clamp(4.0, 8.0);
-                    
-                    cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
+
+                    cr.select_font_face(
+                        "Sans",
+                        cairo::FontSlant::Normal,
+                        cairo::FontWeight::Normal,
+                    );
                     cr.set_font_size(font_size);
-                    
+
                     let text_extents = cr.text_extents(&layout.title).unwrap();
-                    
+
                     // Only draw text if it fits
                     if text_extents.width() <= w - 4.0 && text_extents.height() <= h - 2.0 {
                         let text_x = x + (w - text_extents.width()) / 2.0; // Center horizontally
                         let text_y = y + (h + text_extents.height()) / 2.0; // Center vertically
-                        
+
                         // Draw text with slight outline for visibility
                         cr.set_source_rgba(0.0, 0.0, 0.0, 0.8); // Dark outline
                         for dx in [-0.5, 0.0, 0.5] {
@@ -411,7 +439,7 @@ impl ViewportModule {
                                 }
                             }
                         }
-                        
+
                         // Draw main text
                         cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                         cr.move_to(text_x, text_y);

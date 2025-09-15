@@ -377,6 +377,9 @@ impl Bar {
                     net: module_config.and_then(|c| c.net),
                     enabled: module_config.and_then(|c| c.enabled),
                     display: module_config.and_then(|c| c.display.clone()),
+                    width: module_config.and_then(|c| c.width),
+                    show_window_titles: module_config.and_then(|c| c.show_window_titles),
+                    highlight_focused: module_config.and_then(|c| c.highlight_focused),
                     additional: module_config
                         .map(|c| c.additional.clone())
                         .unwrap_or_default(),

@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+use std::sync::mpsc::Sender;
 use once_cell::sync::Lazy;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -78,6 +79,19 @@ impl NiriIpc {
 pub struct WindowInfo {
     pub id: i64,
     pub title: String,
+    pub app_id: String,
+    pub workspace_id: i64,
+    pub is_focused: bool,
+    pub is_floating: bool,
+    pub layout: Option<WindowLayout>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WindowLayout {
+    pub pos_in_scrolling_layout: [f64; 2],
+    pub tile_size: [f64; 2],
+    pub window_size: [f64; 2],
+    pub window_offset_in_tile: [f64; 2],
 }
 
 #[derive(Debug, Clone)]
@@ -96,6 +110,7 @@ pub struct NiriBus {
     keyboard_layout_names: Mutex<Vec<String>>, // from KeyboardLayoutsChanged
     current_keyboard_layout_index: Mutex<Option<usize>>, // from KeyboardLayoutsChanged
     overview_is_open: Mutex<bool>,             // from OverviewOpenedOrClosed
+    update_listeners: Mutex<Vec<Sender<()>>>, // UI listeners
 }
 
 impl NiriBus {
@@ -107,6 +122,7 @@ impl NiriBus {
             keyboard_layout_names: Mutex::new(Vec::new()),
             current_keyboard_layout_index: Mutex::new(None),
             overview_is_open: Mutex::new(false),
+            update_listeners: Mutex::new(Vec::new()),
         }
     }
 
@@ -121,8 +137,26 @@ impl NiriBus {
         String::new()
     }
 
-    // Modules poll for title; keep as minimal helpers to avoid dead code warnings
-    fn queue_broadcast_title(&self) {}
+    // Notify UI listeners (GTK main thread) that state changed
+    fn notify_ui(&self) {
+        if let Ok(listeners) = self.update_listeners.lock() {
+            for tx in listeners.iter() {
+                let _ = tx.send(());
+            }
+        }
+    }
+
+    // Backward compat for modules calling this
+    fn queue_broadcast_title(&self) {
+        self.notify_ui();
+    }
+
+    /// Register a UI listener to get state change notifications
+    pub fn register_ui_listener(&self, sender: Sender<()>) {
+        if let Ok(mut v) = self.update_listeners.lock() {
+            v.push(sender);
+        }
+    }
 
     pub fn handle_json_line(&self, line: &str) {
         // Parse JSON and update caches
@@ -167,6 +201,81 @@ impl NiriBus {
                     }
                     self.queue_broadcast_title();
                 }
+            } else if obj.contains_key("WindowLayoutsChanged") {
+                // {"WindowLayoutsChanged":{"changes":[[id, {layout...}], ...]}}
+                if let Some(changes) = obj
+                    .get("WindowLayoutsChanged")
+                    .and_then(|v| v.get("changes"))
+                    .and_then(|v| v.as_array())
+                {
+                    if let Ok(mut map) = self.windows_by_id.lock() {
+                        for entry in changes.iter() {
+                            if let Some(arr) = entry.as_array() {
+                                if arr.len() == 2 {
+                                    let id_opt = arr[0].as_i64();
+                                    let layout_obj_opt = arr[1].as_object();
+                                    if let (Some(id), Some(layout_obj)) = (id_opt, layout_obj_opt) {
+                                        // Parse layout fields
+                                        let pos = layout_obj.get("pos_in_scrolling_layout")
+                                            .and_then(|v| v.as_array())
+                                            .and_then(|arr| {
+                                                if arr.len() >= 2 {
+                                                    Some([
+                                                        arr[0].as_f64().unwrap_or(0.0),
+                                                        arr[1].as_f64().unwrap_or(0.0),
+                                                    ])
+                                                } else { None }
+                                            });
+                                        let tile_size = layout_obj.get("tile_size")
+                                            .and_then(|v| v.as_array())
+                                            .and_then(|arr| {
+                                                if arr.len() >= 2 {
+                                                    Some([
+                                                        arr[0].as_f64().unwrap_or(0.0),
+                                                        arr[1].as_f64().unwrap_or(0.0),
+                                                    ])
+                                                } else { None }
+                                            });
+                                        let window_size = layout_obj.get("window_size")
+                                            .and_then(|v| v.as_array())
+                                            .and_then(|arr| {
+                                                if arr.len() >= 2 {
+                                                    Some([
+                                                        arr[0].as_f64().unwrap_or(0.0),
+                                                        arr[1].as_f64().unwrap_or(0.0),
+                                                    ])
+                                                } else { None }
+                                            });
+                                        let window_offset = layout_obj.get("window_offset_in_tile")
+                                            .and_then(|v| v.as_array())
+                                            .and_then(|arr| {
+                                                if arr.len() >= 2 {
+                                                    Some([
+                                                        arr[0].as_f64().unwrap_or(0.0),
+                                                        arr[1].as_f64().unwrap_or(0.0),
+                                                    ])
+                                                } else { None }
+                                            });
+
+                                        if let Some(win) = map.get_mut(&id) {
+                                            // Only update layout if we could parse sizes
+                                            if let (Some(pos), Some(tile_size), Some(window_size), Some(window_offset)) = (pos, tile_size, window_size, window_offset) {
+                                                win.layout = Some(WindowLayout {
+                                                    pos_in_scrolling_layout: pos,
+                                                    tile_size,
+                                                    window_size,
+                                                    window_offset_in_tile: window_offset,
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Notify UI listeners to update immediately
+                self.notify_ui();
             } else if obj.contains_key("WindowFocusChanged") {
                 // {"WindowFocusChanged":{"id":<id|null>}}
                 let new_id_opt = obj
@@ -180,8 +289,22 @@ impl NiriBus {
                         }
                     })
                     .flatten();
+                // Update focused id and mark windows accordingly
                 if let Ok(mut f) = self.focused_window_id.lock() {
+                    let old = *f;
                     *f = new_id_opt;
+                    if let Ok(mut map) = self.windows_by_id.lock() {
+                        if let Some(old_id) = old {
+                            if let Some(w) = map.get_mut(&old_id) {
+                                w.is_focused = false;
+                            }
+                        }
+                        if let Some(new_id) = new_id_opt {
+                            if let Some(w) = map.get_mut(&new_id) {
+                                w.is_focused = true;
+                            }
+                        }
+                    }
                 }
                 self.queue_broadcast_title();
             } else if obj.contains_key("WorkspaceActiveWindowChanged") {
@@ -198,7 +321,20 @@ impl NiriBus {
                     })
                     .flatten();
                 if let Ok(mut f) = self.focused_window_id.lock() {
+                    let old = *f;
                     *f = new_id_opt;
+                    if let Ok(mut map) = self.windows_by_id.lock() {
+                        if let Some(old_id) = old {
+                            if let Some(w) = map.get_mut(&old_id) {
+                                w.is_focused = false;
+                            }
+                        }
+                        if let Some(new_id) = new_id_opt {
+                            if let Some(w) = map.get_mut(&new_id) {
+                                w.is_focused = true;
+                            }
+                        }
+                    }
                 }
                 self.queue_broadcast_title();
             } else if obj.contains_key("WorkspaceActivated") {
@@ -321,18 +457,102 @@ impl NiriBus {
                         o.get("title").and_then(|v| v.as_str()),
                     )
                 {
+                    let app_id = o.get("app_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    
+                    let workspace_id = o.get("workspace_id")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    
+                    let is_focused = o.get("is_focused")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    
+                    let is_floating = o.get("is_floating")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    
+                    // Parse layout information
+                    let layout = o.get("layout")
+                        .and_then(|v| v.as_object())
+                        .and_then(|layout_obj| {
+                            let pos = layout_obj.get("pos_in_scrolling_layout")
+                                .and_then(|v| v.as_array())
+                                .and_then(|arr| {
+                                    if arr.len() >= 2 {
+                                        Some([
+                                            arr[0].as_f64().unwrap_or(0.0),
+                                            arr[1].as_f64().unwrap_or(0.0),
+                                        ])
+                                    } else {
+                                        None
+                                    }
+                                })?;
+                            
+                            let tile_size = layout_obj.get("tile_size")
+                                .and_then(|v| v.as_array())
+                                .and_then(|arr| {
+                                    if arr.len() >= 2 {
+                                        Some([
+                                            arr[0].as_f64().unwrap_or(0.0),
+                                            arr[1].as_f64().unwrap_or(0.0),
+                                        ])
+                                    } else {
+                                        None
+                                    }
+                                })?;
+                            
+                            let window_size = layout_obj.get("window_size")
+                                .and_then(|v| v.as_array())
+                                .and_then(|arr| {
+                                    if arr.len() >= 2 {
+                                        Some([
+                                            arr[0].as_f64().unwrap_or(0.0),
+                                            arr[1].as_f64().unwrap_or(0.0),
+                                        ])
+                                    } else {
+                                        None
+                                    }
+                                })?;
+                            
+                            let window_offset = layout_obj.get("window_offset_in_tile")
+                                .and_then(|v| v.as_array())
+                                .and_then(|arr| {
+                                    if arr.len() >= 2 {
+                                        Some([
+                                            arr[0].as_f64().unwrap_or(0.0),
+                                            arr[1].as_f64().unwrap_or(0.0),
+                                        ])
+                                    } else {
+                                        None
+                                    }
+                                })?;
+                            
+                            Some(WindowLayout {
+                                pos_in_scrolling_layout: pos,
+                                tile_size,
+                                window_size,
+                                window_offset_in_tile: window_offset,
+                            })
+                        });
+
                     map.insert(
                         id,
                         WindowInfo {
                             id,
                             title: title.to_string(),
+                            app_id,
+                            workspace_id,
+                            is_focused,
+                            is_floating,
+                            layout,
                         },
                     );
 
                     // Check if this window is focused
-                    if let Some(is_focused) = o.get("is_focused").and_then(|v| v.as_bool())
-                        && is_focused
-                    {
+                    if is_focused {
                         focused_id = Some(id);
                     }
                 }
@@ -354,12 +574,98 @@ impl NiriBus {
             o.get("id").and_then(|v| v.as_i64()),
             o.get("title").and_then(|v| v.as_str()),
         ) {
+            let app_id = o.get("app_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            
+            let workspace_id = o.get("workspace_id")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            
+            let is_focused = o.get("is_focused")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            
+            let is_floating = o.get("is_floating")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            
+            // Parse layout information
+            let layout = o.get("layout")
+                .and_then(|v| v.as_object())
+                .and_then(|layout_obj| {
+                    let pos = layout_obj.get("pos_in_scrolling_layout")
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| {
+                            if arr.len() >= 2 {
+                                Some([
+                                    arr[0].as_f64().unwrap_or(0.0),
+                                    arr[1].as_f64().unwrap_or(0.0),
+                                ])
+                            } else {
+                                None
+                            }
+                        })?;
+                    
+                    let tile_size = layout_obj.get("tile_size")
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| {
+                            if arr.len() >= 2 {
+                                Some([
+                                    arr[0].as_f64().unwrap_or(0.0),
+                                    arr[1].as_f64().unwrap_or(0.0),
+                                ])
+                            } else {
+                                None
+                            }
+                        })?;
+                    
+                    let window_size = layout_obj.get("window_size")
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| {
+                            if arr.len() >= 2 {
+                                Some([
+                                    arr[0].as_f64().unwrap_or(0.0),
+                                    arr[1].as_f64().unwrap_or(0.0),
+                                ])
+                            } else {
+                                None
+                            }
+                        })?;
+                    
+                    let window_offset = layout_obj.get("window_offset_in_tile")
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| {
+                            if arr.len() >= 2 {
+                                Some([
+                                    arr[0].as_f64().unwrap_or(0.0),
+                                    arr[1].as_f64().unwrap_or(0.0),
+                                ])
+                            } else {
+                                None
+                            }
+                        })?;
+                    
+                    Some(WindowLayout {
+                        pos_in_scrolling_layout: pos,
+                        tile_size,
+                        window_size,
+                        window_offset_in_tile: window_offset,
+                    })
+                });
+
             if let Ok(mut map) = self.windows_by_id.lock() {
                 map.insert(
                     id,
                     WindowInfo {
                         id,
                         title: title.to_string(),
+                        app_id,
+                        workspace_id,
+                        is_focused,
+                        is_floating,
+                        layout,
                     },
                 );
             }
@@ -468,6 +774,35 @@ impl NiriBus {
     /// Whether the overview is currently open
     pub fn is_overview_open(&self) -> bool {
         self.overview_is_open.lock().map(|v| *v).unwrap_or(false)
+    }
+
+    /// Snapshot of focussed window id
+    pub fn focused_window_id_snapshot(&self) -> Option<i64> {
+        self.focused_window_id
+            .lock()
+            .ok()
+            .and_then(|g| *g)
+    }
+
+    /// Get windows for a specific workspace
+    pub fn windows_for_workspace(&self, workspace_id: i64) -> Vec<WindowInfo> {
+        if let Ok(windows_map) = self.windows_by_id.lock() {
+            windows_map
+                .values()
+                .filter(|window| window.workspace_id == workspace_id)
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Get the currently focused workspace ID
+    pub fn focused_workspace_id(&self) -> Option<i64> {
+        let list = self.workspaces.lock().ok()?;
+        list.iter()
+            .find(|ws| ws.is_focused)
+            .map(|ws| ws.id)
     }
 
     /// Reset all internal state for testing isolation

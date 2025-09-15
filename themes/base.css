@@ -312,3 +312,34 @@ label:hover {
 .workspace-pill.pulse {
     transform: scale(1.15);
 }
+
+/* ===== VIEWPORT MODULE STYLES ===== */
+.module-viewport {
+    padding: 2px;
+    margin: 0 4px;
+}
+
+.viewport-canvas {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    min-width: 40px;
+    /* GTK doesn't support max-width; width is managed in Rust */
+    min-height: 20px;
+}
+
+/* Per-monitor viewport styling */
+#monitor-eDP-1 .module-viewport .viewport-canvas {
+    border-color: var(--module-workspaces);
+}
+
+/* Focus highlight animation */
+.viewport-window-focused {
+    animation: viewport-focus-pulse 1s ease-in-out;
+}
+
+@keyframes viewport-focus-pulse {
+    0% { transform: scale(1.0); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1.0); }
+}

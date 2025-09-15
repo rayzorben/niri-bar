@@ -5,6 +5,7 @@ use std::collections::HashMap;
 pub mod battery;
 pub mod clock;
 pub mod tray;
+pub mod viewport;
 pub mod wallpaper;
 pub mod window_title;
 pub mod workspaces;
@@ -39,6 +40,10 @@ static REGISTRY: Lazy<HashMap<&'static str, FactoryFn>> = Lazy::new(|| {
     m.insert(
         wallpaper::WallpaperModule::IDENT,
         wallpaper::WallpaperModule::create_widget,
+    );
+    m.insert(
+        viewport::ViewportModule::IDENT,
+        viewport::ViewportModule::create_widget,
     );
     m
 });

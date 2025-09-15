@@ -133,6 +133,21 @@
         "enabled": {
           "type": "boolean",
           "description": "Enable/disable module"
+        },
+        "width": {
+          "type": ["integer", "null"],
+          "minimum": 20,
+          "description": "Fixed width in pixels for modules that support it (viewport)"
+        },
+        "show_window_titles": {
+          "type": "boolean",
+          "description": "Show window titles in viewport (for viewport module)",
+          "default": true
+        },
+        "highlight_focused": {
+          "type": "boolean",
+          "description": "Highlight focused window in viewport (for viewport module)",
+          "default": true
         }
       },
       "additionalProperties": true

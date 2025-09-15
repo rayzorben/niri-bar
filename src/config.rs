@@ -90,6 +90,15 @@ pub struct ModuleConfig {
     /// Display mode for this module
     #[serde(default)]
     pub display: Option<DisplayMode>,
+    /// Optional fixed width for modules that support it (e.g., viewport)
+    #[serde(default)]
+    pub width: Option<i32>,
+    /// Show window titles in viewport (default: true)
+    #[serde(default)]
+    pub show_window_titles: Option<bool>,
+    /// Highlight focused window in viewport (default: true)
+    #[serde(default)]
+    pub highlight_focused: Option<bool>,
     // Allow additional fields
     #[serde(flatten)]
     pub additional: HashMap<String, serde_yaml::Value>,

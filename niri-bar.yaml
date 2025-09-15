@@ -58,13 +58,20 @@ application:
         resize: "crop"
         fill_color: "000000"
 
+    # Viewport module (live workspace preview)
+    viewport: &viewport_default
+      width: 140
+      show_window_titles: true
+      highlight_focused: true
+      update_rate_ms: 33  # ~30 FPS
+
   # ---- LAYOUT PROFILES ----
   layouts:
     # Default everywhere: simple 3 columns
     three_column: &layout_three
       columns: &cols_three
         left: &col_left
-          modules: ["workspaces", "wallpaper"]
+          modules: ["workspaces", "wallpaper", "viewport"]
           overflow: hide
           gap: 6        # pixels between modules
           align: "left" # left, center, right
@@ -83,7 +90,7 @@ application:
     five_panel: &layout_five
       columns:
         left:
-          modules: ["workspaces", "wallpaper"]
+          modules: ["workspaces", "wallpaper", "viewport"]
           overflow: hide
           gap: 6
           align: "left"
@@ -124,6 +131,7 @@ application:
         tray:         { <<: *tray_default }
         system:       { <<: *system_default }
         wallpaper:     { <<: *wallpaper_default }
+        viewport:     { <<: *viewport_default }
 
     - match: "^eDP-1$"
       show_bar: true
@@ -131,7 +139,7 @@ application:
       layout:
         columns:
           left:
-            modules: ["workspaces", "wallpaper"]
+            modules: ["workspaces", "wallpaper", "viewport"]
             overflow: hide
             gap: 6
             align: "left"
@@ -159,6 +167,8 @@ application:
           display: "show"  # Ensure visible on laptop
         wallpaper:
           <<: *wallpaper_default
+        viewport:
+          <<: *viewport_default
 
     # Example: disable all other DP heads (optional)
     - match: "^DP-.*$"

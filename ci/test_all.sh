@@ -105,14 +105,20 @@ run_lints_and_format() {
 run_unit_tests() {
     print_status "Running unit tests..."
 
-    # Run tests with nextest for better output and parallelization
+    # Run viewport tests with single-threaded execution to avoid race conditions
+    if ! cargo test --test test_viewport_module --all-features -- --test-threads=1; then
+        print_error "Viewport module tests failed"
+        exit 1
+    fi
+
+    # Run tests with nextest for better output and parallelization (excluding viewport tests by running specific test files)
     if command -v cargo-nextest &> /dev/null; then
-        if ! cargo nextest run --all-features --workspace; then
+        if ! cargo nextest run --all-features --test application_tests --test bar_tests --test config_tests --test file_watcher_tests --test hot_reload_tests --test logger_tests --test modules_tests --test monitor_tests --test niri_bus_tests --test ui_tests --test wallpaper_tests --test workspaces_resolve_tests; then
             print_error "Unit tests failed"
             exit 1
         fi
     else
-        if ! cargo test --all-features --workspace; then
+        if ! cargo test --all-features --test application_tests --test bar_tests --test config_tests --test file_watcher_tests --test hot_reload_tests --test logger_tests --test modules_tests --test monitor_tests --test niri_bus_tests --test ui_tests --test wallpaper_tests --test workspaces_resolve_tests; then
             print_error "Unit tests failed"
             exit 1
         fi
@@ -137,7 +143,14 @@ run_doctests() {
 run_property_tests() {
     print_status "Running property-based tests..."
 
-    if ! cargo test --features proptest --workspace; then
+    # Run viewport tests with single-threaded execution to avoid race conditions
+    if ! cargo test --test test_viewport_module --features proptest -- --test-threads=1; then
+        print_error "Viewport module tests failed"
+        exit 1
+    fi
+
+    # Run all other tests normally (excluding viewport tests by running specific test files)
+    if ! cargo test --features proptest --test application_tests --test bar_tests --test config_tests --test file_watcher_tests --test hot_reload_tests --test logger_tests --test modules_tests --test monitor_tests --test niri_bus_tests --test ui_tests --test wallpaper_tests --test workspaces_resolve_tests; then
         print_error "Property-based tests failed"
         exit 1
     fi
@@ -170,8 +183,14 @@ run_coverage() {
         return 0
     fi
 
-    # Generate coverage report
-    if ! cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info; then
+    # Run viewport tests with single-threaded execution for coverage
+    if ! cargo llvm-cov test --test test_viewport_module --all-features -- --test-threads=1; then
+        print_error "Viewport module coverage tests failed"
+        exit 1
+    fi
+
+    # Generate coverage report for all other tests (excluding viewport tests by running specific test files)
+    if ! cargo llvm-cov --workspace --all-features --test application_tests --test bar_tests --test config_tests --test file_watcher_tests --test hot_reload_tests --test logger_tests --test modules_tests --test monitor_tests --test niri_bus_tests --test ui_tests --test wallpaper_tests --test workspaces_resolve_tests --lcov --output-path lcov.info; then
         print_error "Coverage analysis failed"
         exit 1
     fi

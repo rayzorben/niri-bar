@@ -1,11 +1,11 @@
 use anyhow::{Result, anyhow};
-use std::sync::mpsc::Sender;
 use once_cell::sync::Lazy;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -110,7 +110,7 @@ pub struct NiriBus {
     keyboard_layout_names: Mutex<Vec<String>>, // from KeyboardLayoutsChanged
     current_keyboard_layout_index: Mutex<Option<usize>>, // from KeyboardLayoutsChanged
     overview_is_open: Mutex<bool>,             // from OverviewOpenedOrClosed
-    update_listeners: Mutex<Vec<Sender<()>>>, // UI listeners
+    update_listeners: Mutex<Vec<Sender<()>>>,  // UI listeners
 }
 
 impl NiriBus {
@@ -207,67 +207,84 @@ impl NiriBus {
                     .get("WindowLayoutsChanged")
                     .and_then(|v| v.get("changes"))
                     .and_then(|v| v.as_array())
+                    && let Ok(mut map) = self.windows_by_id.lock()
                 {
-                    if let Ok(mut map) = self.windows_by_id.lock() {
-                        for entry in changes.iter() {
-                            if let Some(arr) = entry.as_array() {
-                                if arr.len() == 2 {
-                                    let id_opt = arr[0].as_i64();
-                                    let layout_obj_opt = arr[1].as_object();
-                                    if let (Some(id), Some(layout_obj)) = (id_opt, layout_obj_opt) {
-                                        // Parse layout fields
-                                        let pos = layout_obj.get("pos_in_scrolling_layout")
-                                            .and_then(|v| v.as_array())
-                                            .and_then(|arr| {
-                                                if arr.len() >= 2 {
-                                                    Some([
-                                                        arr[0].as_f64().unwrap_or(0.0),
-                                                        arr[1].as_f64().unwrap_or(0.0),
-                                                    ])
-                                                } else { None }
-                                            });
-                                        let tile_size = layout_obj.get("tile_size")
-                                            .and_then(|v| v.as_array())
-                                            .and_then(|arr| {
-                                                if arr.len() >= 2 {
-                                                    Some([
-                                                        arr[0].as_f64().unwrap_or(0.0),
-                                                        arr[1].as_f64().unwrap_or(0.0),
-                                                    ])
-                                                } else { None }
-                                            });
-                                        let window_size = layout_obj.get("window_size")
-                                            .and_then(|v| v.as_array())
-                                            .and_then(|arr| {
-                                                if arr.len() >= 2 {
-                                                    Some([
-                                                        arr[0].as_f64().unwrap_or(0.0),
-                                                        arr[1].as_f64().unwrap_or(0.0),
-                                                    ])
-                                                } else { None }
-                                            });
-                                        let window_offset = layout_obj.get("window_offset_in_tile")
-                                            .and_then(|v| v.as_array())
-                                            .and_then(|arr| {
-                                                if arr.len() >= 2 {
-                                                    Some([
-                                                        arr[0].as_f64().unwrap_or(0.0),
-                                                        arr[1].as_f64().unwrap_or(0.0),
-                                                    ])
-                                                } else { None }
-                                            });
-
-                                        if let Some(win) = map.get_mut(&id) {
-                                            // Only update layout if we could parse sizes
-                                            if let (Some(pos), Some(tile_size), Some(window_size), Some(window_offset)) = (pos, tile_size, window_size, window_offset) {
-                                                win.layout = Some(WindowLayout {
-                                                    pos_in_scrolling_layout: pos,
-                                                    tile_size,
-                                                    window_size,
-                                                    window_offset_in_tile: window_offset,
-                                                });
-                                            }
+                    for entry in changes.iter() {
+                        if let Some(arr) = entry.as_array()
+                            && arr.len() == 2
+                        {
+                            let id_opt = arr[0].as_i64();
+                            let layout_obj_opt = arr[1].as_object();
+                            if let (Some(id), Some(layout_obj)) = (id_opt, layout_obj_opt) {
+                                // Parse layout fields
+                                let pos = layout_obj
+                                    .get("pos_in_scrolling_layout")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
                                         }
+                                    });
+                                let tile_size = layout_obj
+                                    .get("tile_size")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    });
+                                let window_size = layout_obj
+                                    .get("window_size")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    });
+                                let window_offset = layout_obj
+                                    .get("window_offset_in_tile")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    });
+
+                                if let Some(win) = map.get_mut(&id) {
+                                    // Only update layout if we could parse sizes
+                                    if let (
+                                        Some(pos),
+                                        Some(tile_size),
+                                        Some(window_size),
+                                        Some(window_offset),
+                                    ) = (pos, tile_size, window_size, window_offset)
+                                    {
+                                        win.layout = Some(WindowLayout {
+                                            pos_in_scrolling_layout: pos,
+                                            tile_size,
+                                            window_size,
+                                            window_offset_in_tile: window_offset,
+                                        });
                                     }
                                 }
                             }
@@ -294,15 +311,15 @@ impl NiriBus {
                     let old = *f;
                     *f = new_id_opt;
                     if let Ok(mut map) = self.windows_by_id.lock() {
-                        if let Some(old_id) = old {
-                            if let Some(w) = map.get_mut(&old_id) {
-                                w.is_focused = false;
-                            }
+                        if let Some(old_id) = old
+                            && let Some(w) = map.get_mut(&old_id)
+                        {
+                            w.is_focused = false;
                         }
-                        if let Some(new_id) = new_id_opt {
-                            if let Some(w) = map.get_mut(&new_id) {
-                                w.is_focused = true;
-                            }
+                        if let Some(new_id) = new_id_opt
+                            && let Some(w) = map.get_mut(&new_id)
+                        {
+                            w.is_focused = true;
                         }
                     }
                 }
@@ -324,15 +341,15 @@ impl NiriBus {
                     let old = *f;
                     *f = new_id_opt;
                     if let Ok(mut map) = self.windows_by_id.lock() {
-                        if let Some(old_id) = old {
-                            if let Some(w) = map.get_mut(&old_id) {
-                                w.is_focused = false;
-                            }
+                        if let Some(old_id) = old
+                            && let Some(w) = map.get_mut(&old_id)
+                        {
+                            w.is_focused = false;
                         }
-                        if let Some(new_id) = new_id_opt {
-                            if let Some(w) = map.get_mut(&new_id) {
-                                w.is_focused = true;
-                            }
+                        if let Some(new_id) = new_id_opt
+                            && let Some(w) = map.get_mut(&new_id)
+                        {
+                            w.is_focused = true;
                         }
                     }
                 }
@@ -457,86 +474,92 @@ impl NiriBus {
                         o.get("title").and_then(|v| v.as_str()),
                     )
                 {
-                    let app_id = o.get("app_id")
+                    let app_id = o
+                        .get("app_id")
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
-                    
-                    let workspace_id = o.get("workspace_id")
-                        .and_then(|v| v.as_i64())
-                        .unwrap_or(0);
-                    
-                    let is_focused = o.get("is_focused")
+
+                    let workspace_id = o.get("workspace_id").and_then(|v| v.as_i64()).unwrap_or(0);
+
+                    let is_focused = o
+                        .get("is_focused")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false);
-                    
-                    let is_floating = o.get("is_floating")
+
+                    let is_floating = o
+                        .get("is_floating")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false);
-                    
+
                     // Parse layout information
-                    let layout = o.get("layout")
-                        .and_then(|v| v.as_object())
-                        .and_then(|layout_obj| {
-                            let pos = layout_obj.get("pos_in_scrolling_layout")
-                                .and_then(|v| v.as_array())
-                                .and_then(|arr| {
-                                    if arr.len() >= 2 {
-                                        Some([
-                                            arr[0].as_f64().unwrap_or(0.0),
-                                            arr[1].as_f64().unwrap_or(0.0),
-                                        ])
-                                    } else {
-                                        None
-                                    }
-                                })?;
-                            
-                            let tile_size = layout_obj.get("tile_size")
-                                .and_then(|v| v.as_array())
-                                .and_then(|arr| {
-                                    if arr.len() >= 2 {
-                                        Some([
-                                            arr[0].as_f64().unwrap_or(0.0),
-                                            arr[1].as_f64().unwrap_or(0.0),
-                                        ])
-                                    } else {
-                                        None
-                                    }
-                                })?;
-                            
-                            let window_size = layout_obj.get("window_size")
-                                .and_then(|v| v.as_array())
-                                .and_then(|arr| {
-                                    if arr.len() >= 2 {
-                                        Some([
-                                            arr[0].as_f64().unwrap_or(0.0),
-                                            arr[1].as_f64().unwrap_or(0.0),
-                                        ])
-                                    } else {
-                                        None
-                                    }
-                                })?;
-                            
-                            let window_offset = layout_obj.get("window_offset_in_tile")
-                                .and_then(|v| v.as_array())
-                                .and_then(|arr| {
-                                    if arr.len() >= 2 {
-                                        Some([
-                                            arr[0].as_f64().unwrap_or(0.0),
-                                            arr[1].as_f64().unwrap_or(0.0),
-                                        ])
-                                    } else {
-                                        None
-                                    }
-                                })?;
-                            
-                            Some(WindowLayout {
-                                pos_in_scrolling_layout: pos,
-                                tile_size,
-                                window_size,
-                                window_offset_in_tile: window_offset,
-                            })
-                        });
+                    let layout =
+                        o.get("layout")
+                            .and_then(|v| v.as_object())
+                            .and_then(|layout_obj| {
+                                let pos = layout_obj
+                                    .get("pos_in_scrolling_layout")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    })?;
+
+                                let tile_size = layout_obj
+                                    .get("tile_size")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    })?;
+
+                                let window_size = layout_obj
+                                    .get("window_size")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    })?;
+
+                                let window_offset = layout_obj
+                                    .get("window_offset_in_tile")
+                                    .and_then(|v| v.as_array())
+                                    .and_then(|arr| {
+                                        if arr.len() >= 2 {
+                                            Some([
+                                                arr[0].as_f64().unwrap_or(0.0),
+                                                arr[1].as_f64().unwrap_or(0.0),
+                                            ])
+                                        } else {
+                                            None
+                                        }
+                                    })?;
+
+                                Some(WindowLayout {
+                                    pos_in_scrolling_layout: pos,
+                                    tile_size,
+                                    window_size,
+                                    window_offset_in_tile: window_offset,
+                                })
+                            });
 
                     map.insert(
                         id,
@@ -574,28 +597,31 @@ impl NiriBus {
             o.get("id").and_then(|v| v.as_i64()),
             o.get("title").and_then(|v| v.as_str()),
         ) {
-            let app_id = o.get("app_id")
+            let app_id = o
+                .get("app_id")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            
-            let workspace_id = o.get("workspace_id")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0);
-            
-            let is_focused = o.get("is_focused")
+
+            let workspace_id = o.get("workspace_id").and_then(|v| v.as_i64()).unwrap_or(0);
+
+            let is_focused = o
+                .get("is_focused")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
-            
-            let is_floating = o.get("is_floating")
+
+            let is_floating = o
+                .get("is_floating")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
-            
+
             // Parse layout information
-            let layout = o.get("layout")
+            let layout = o
+                .get("layout")
                 .and_then(|v| v.as_object())
                 .and_then(|layout_obj| {
-                    let pos = layout_obj.get("pos_in_scrolling_layout")
+                    let pos = layout_obj
+                        .get("pos_in_scrolling_layout")
                         .and_then(|v| v.as_array())
                         .and_then(|arr| {
                             if arr.len() >= 2 {
@@ -607,8 +633,9 @@ impl NiriBus {
                                 None
                             }
                         })?;
-                    
-                    let tile_size = layout_obj.get("tile_size")
+
+                    let tile_size = layout_obj
+                        .get("tile_size")
                         .and_then(|v| v.as_array())
                         .and_then(|arr| {
                             if arr.len() >= 2 {
@@ -620,8 +647,9 @@ impl NiriBus {
                                 None
                             }
                         })?;
-                    
-                    let window_size = layout_obj.get("window_size")
+
+                    let window_size = layout_obj
+                        .get("window_size")
                         .and_then(|v| v.as_array())
                         .and_then(|arr| {
                             if arr.len() >= 2 {
@@ -633,8 +661,9 @@ impl NiriBus {
                                 None
                             }
                         })?;
-                    
-                    let window_offset = layout_obj.get("window_offset_in_tile")
+
+                    let window_offset = layout_obj
+                        .get("window_offset_in_tile")
                         .and_then(|v| v.as_array())
                         .and_then(|arr| {
                             if arr.len() >= 2 {
@@ -646,7 +675,7 @@ impl NiriBus {
                                 None
                             }
                         })?;
-                    
+
                     Some(WindowLayout {
                         pos_in_scrolling_layout: pos,
                         tile_size,
@@ -778,10 +807,7 @@ impl NiriBus {
 
     /// Snapshot of focussed window id
     pub fn focused_window_id_snapshot(&self) -> Option<i64> {
-        self.focused_window_id
-            .lock()
-            .ok()
-            .and_then(|g| *g)
+        self.focused_window_id.lock().ok().and_then(|g| *g)
     }
 
     /// Get windows for a specific workspace
@@ -800,9 +826,7 @@ impl NiriBus {
     /// Get the currently focused workspace ID
     pub fn focused_workspace_id(&self) -> Option<i64> {
         let list = self.workspaces.lock().ok()?;
-        list.iter()
-            .find(|ws| ws.is_focused)
-            .map(|ws| ws.id)
+        list.iter().find(|ws| ws.is_focused).map(|ws| ws.id)
     }
 
     /// Reset all internal state for testing isolation

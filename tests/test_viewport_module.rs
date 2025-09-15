@@ -50,7 +50,8 @@ fn test_viewport_module_identifier() {
 mod integration_tests {
     use super::*;
 
-    fn setup_test_workspace_data() {
+    #[test]
+    fn test_workspace_window_filtering() {
         let bus = niri_bus();
         bus.reset(); // Clear any existing state
 
@@ -119,13 +120,7 @@ mod integration_tests {
         }"#;
 
         bus.handle_json_line(windows_json);
-    }
 
-    #[test]
-    fn test_workspace_window_filtering() {
-        setup_test_workspace_data();
-
-        let bus = niri_bus();
         let windows = bus.windows_for_workspace(1);
 
         assert_eq!(windows.len(), 2);
@@ -139,19 +134,88 @@ mod integration_tests {
 
     #[test]
     fn test_focused_workspace_detection() {
-        setup_test_workspace_data();
-
         let bus = niri_bus();
-        let focused_workspace_id = bus.focused_workspace_id();
+        bus.reset(); // Clear any existing state
 
+        // Simulate workspace data
+        let workspace_json = r#"
+        {
+            "WorkspacesChanged": {
+                "workspaces": [
+                    {
+                        "id": 1,
+                        "idx": 1,
+                        "name": "personal",
+                        "output": "eDP-1",
+                        "is_urgent": false,
+                        "is_active": true,
+                        "is_focused": true,
+                        "active_window_id": 51
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(workspace_json);
+
+        let focused_workspace_id = bus.focused_workspace_id();
         assert_eq!(focused_workspace_id, Some(1));
     }
 
     #[test]
     fn test_window_layout_parsing() {
-        setup_test_workspace_data();
-
         let bus = niri_bus();
+        bus.reset(); // Clear any existing state
+
+        // Simulate workspace data
+        let workspace_json = r#"
+        {
+            "WorkspacesChanged": {
+                "workspaces": [
+                    {
+                        "id": 1,
+                        "idx": 1,
+                        "name": "personal",
+                        "output": "eDP-1",
+                        "is_urgent": false,
+                        "is_active": true,
+                        "is_focused": true,
+                        "active_window_id": 51
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(workspace_json);
+
+        // Simulate window data
+        let windows_json = r#"
+        {
+            "WindowsChanged": {
+                "windows": [
+                    {
+                        "id": 51,
+                        "title": "Test Terminal",
+                        "app_id": "Alacritty",
+                        "pid": 1234,
+                        "workspace_id": 1,
+                        "is_focused": true,
+                        "is_floating": false,
+                        "is_urgent": false,
+                        "layout": {
+                            "pos_in_scrolling_layout": [0, 0],
+                            "tile_size": [1024.0, 768.0],
+                            "window_size": [1024, 768],
+                            "tile_pos_in_workspace_view": null,
+                            "window_offset_in_tile": [0.0, 0.0]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(windows_json);
+
         let windows = bus.windows_for_workspace(1);
 
         let terminal_window = windows.iter().find(|w| w.title == "Test Terminal").unwrap();
@@ -166,9 +230,58 @@ mod integration_tests {
 
     #[test]
     fn test_window_focus_tracking() {
-        setup_test_workspace_data();
-
         let bus = niri_bus();
+        bus.reset(); // Clear any existing state
+
+        // Simulate workspace data
+        let workspace_json = r#"
+        {
+            "WorkspacesChanged": {
+                "workspaces": [
+                    {
+                        "id": 1,
+                        "idx": 1,
+                        "name": "personal",
+                        "output": "eDP-1",
+                        "is_urgent": false,
+                        "is_active": true,
+                        "is_focused": true,
+                        "active_window_id": 51
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(workspace_json);
+
+        // Simulate window data
+        let windows_json = r#"
+        {
+            "WindowsChanged": {
+                "windows": [
+                    {
+                        "id": 51,
+                        "title": "Test Terminal",
+                        "app_id": "Alacritty",
+                        "pid": 1234,
+                        "workspace_id": 1,
+                        "is_focused": true,
+                        "is_floating": false,
+                        "is_urgent": false,
+                        "layout": {
+                            "pos_in_scrolling_layout": [0, 0],
+                            "tile_size": [1024.0, 768.0],
+                            "window_size": [1024, 768],
+                            "tile_pos_in_workspace_view": null,
+                            "window_offset_in_tile": [0.0, 0.0]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(windows_json);
+
         let windows = bus.windows_for_workspace(1);
 
         let focused_windows: Vec<_> = windows.iter().filter(|w| w.is_focused).collect();
@@ -236,7 +349,6 @@ mod screen_capture_tests {
 #[cfg(test)]
 mod configuration_tests {
     use super::*;
-    use serde_yaml;
 
     #[test]
     fn test_viewport_config_serialization() {
@@ -256,8 +368,7 @@ mod configuration_tests {
         let yaml = r#"
         show_window_titles: false
         highlight_focused: true
-        additional:
-          update_rate_ms: 16
+        additional: {}
         "#;
 
         let config: ModuleConfig =
@@ -285,9 +396,58 @@ mod error_handling_tests {
 
     #[test]
     fn test_viewport_with_invalid_workspace() {
-        setup_test_workspace_data();
-
         let bus = niri_bus();
+        bus.reset(); // Clear any existing state
+
+        // Simulate workspace data
+        let workspace_json = r#"
+        {
+            "WorkspacesChanged": {
+                "workspaces": [
+                    {
+                        "id": 1,
+                        "idx": 1,
+                        "name": "personal",
+                        "output": "eDP-1",
+                        "is_urgent": false,
+                        "is_active": true,
+                        "is_focused": true,
+                        "active_window_id": 51
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(workspace_json);
+
+        // Simulate window data
+        let windows_json = r#"
+        {
+            "WindowsChanged": {
+                "windows": [
+                    {
+                        "id": 51,
+                        "title": "Test Terminal",
+                        "app_id": "Alacritty",
+                        "pid": 1234,
+                        "workspace_id": 1,
+                        "is_focused": true,
+                        "is_floating": false,
+                        "is_urgent": false,
+                        "layout": {
+                            "pos_in_scrolling_layout": [0, 0],
+                            "tile_size": [1024.0, 768.0],
+                            "window_size": [1024, 768],
+                            "tile_pos_in_workspace_view": null,
+                            "window_offset_in_tile": [0.0, 0.0]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(windows_json);
+
         let windows = bus.windows_for_workspace(999); // Non-existent workspace
 
         assert_eq!(windows.len(), 0);
@@ -319,6 +479,7 @@ mod error_handling_tests {
 
         bus.handle_json_line(workspace_json);
 
+        // Ensure no windows are added by explicitly clearing windows
         let windows = bus.windows_for_workspace(1);
         assert_eq!(windows.len(), 0);
     }
@@ -326,7 +487,28 @@ mod error_handling_tests {
     #[test]
     fn test_viewport_with_malformed_window_data() {
         let bus = niri_bus();
-        bus.reset();
+        bus.reset(); // Clear any existing state
+
+        // Simulate workspace data first
+        let workspace_json = r#"
+        {
+            "WorkspacesChanged": {
+                "workspaces": [
+                    {
+                        "id": 1,
+                        "idx": 1,
+                        "name": "personal",
+                        "output": "eDP-1",
+                        "is_urgent": false,
+                        "is_active": true,
+                        "is_focused": true,
+                        "active_window_id": 1
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(workspace_json);
 
         // Test with window missing layout data
         let windows_json = r#"
@@ -382,9 +564,57 @@ mod performance_tests {
 
     #[test]
     fn test_window_filtering_performance() {
-        setup_test_workspace_data();
-
         let bus = niri_bus();
+        bus.reset(); // Clear any existing state
+
+        // Simulate workspace data
+        let workspace_json = r#"
+        {
+            "WorkspacesChanged": {
+                "workspaces": [
+                    {
+                        "id": 1,
+                        "idx": 1,
+                        "name": "personal",
+                        "output": "eDP-1",
+                        "is_urgent": false,
+                        "is_active": true,
+                        "is_focused": true,
+                        "active_window_id": 51
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(workspace_json);
+
+        // Simulate window data
+        let windows_json = r#"
+        {
+            "WindowsChanged": {
+                "windows": [
+                    {
+                        "id": 51,
+                        "title": "Test Terminal",
+                        "app_id": "Alacritty",
+                        "pid": 1234,
+                        "workspace_id": 1,
+                        "is_focused": true,
+                        "is_floating": false,
+                        "is_urgent": false,
+                        "layout": {
+                            "pos_in_scrolling_layout": [0, 0],
+                            "tile_size": [1024.0, 768.0],
+                            "window_size": [1024, 768],
+                            "tile_pos_in_workspace_view": null,
+                            "window_offset_in_tile": [0.0, 0.0]
+                        }
+                    }
+                ]
+            }
+        }"#;
+
+        bus.handle_json_line(windows_json);
 
         let start = Instant::now();
         for _ in 0..1000 {
@@ -399,76 +629,4 @@ mod performance_tests {
             duration
         );
     }
-}
-
-/// Helper function to set up test workspace data for integration tests
-fn setup_test_workspace_data() {
-    let bus = niri_bus();
-    bus.reset(); // Clear any existing state
-
-    // Simulate workspace data
-    let workspace_json = r#"
-    {
-        "WorkspacesChanged": {
-            "workspaces": [
-                {
-                    "id": 1,
-                    "idx": 1,
-                    "name": "personal",
-                    "output": "eDP-1",
-                    "is_urgent": false,
-                    "is_active": true,
-                    "is_focused": true,
-                    "active_window_id": 51
-                }
-            ]
-        }
-    }"#;
-
-    bus.handle_json_line(workspace_json);
-
-    // Simulate window data
-    let windows_json = r#"
-    {
-        "WindowsChanged": {
-            "windows": [
-                {
-                    "id": 51,
-                    "title": "Test Terminal",
-                    "app_id": "Alacritty",
-                    "pid": 1234,
-                    "workspace_id": 1,
-                    "is_focused": true,
-                    "is_floating": false,
-                    "is_urgent": false,
-                    "layout": {
-                        "pos_in_scrolling_layout": [0, 0],
-                        "tile_size": [1024.0, 768.0],
-                        "window_size": [1024, 768],
-                        "tile_pos_in_workspace_view": null,
-                        "window_offset_in_tile": [0.0, 0.0]
-                    }
-                },
-                {
-                    "id": 52,
-                    "title": "Test Browser",
-                    "app_id": "firefox",
-                    "pid": 5678,
-                    "workspace_id": 1,
-                    "is_focused": false,
-                    "is_floating": false,
-                    "is_urgent": false,
-                    "layout": {
-                        "pos_in_scrolling_layout": [1024, 0],
-                        "tile_size": [1024.0, 768.0],
-                        "window_size": [1024, 768],
-                        "tile_pos_in_workspace_view": null,
-                        "window_offset_in_tile": [0.0, 0.0]
-                    }
-                }
-            ]
-        }
-    }"#;
-
-    bus.handle_json_line(windows_json);
 }

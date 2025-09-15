@@ -150,23 +150,23 @@ impl ViewportModule {
                             )
                             && fixed_width_opt.is_none()
                         {
-                                let current_height = area.allocated_height() as f64;
-                                if current_height > 0.0 {
-                                    let workspace_aspect_ratio = workspace_width / workspace_height;
-                                    let target_width =
-                                        (current_height * workspace_aspect_ratio).round() as i32;
-                                    let target_width = target_width.max(40);
-                                    if (area.allocated_width() - target_width).abs() > 2 {
-                                        area.set_size_request(target_width, -1);
-                                        log::debug!(
-                                            "Viewport: Resized to {}x{} (aspect ratio: {:.2})",
-                                            target_width,
-                                            current_height as i32,
-                                            workspace_aspect_ratio
-                                        );
-                                    }
+                            let current_height = area.allocated_height() as f64;
+                            if current_height > 0.0 {
+                                let workspace_aspect_ratio = workspace_width / workspace_height;
+                                let target_width =
+                                    (current_height * workspace_aspect_ratio).round() as i32;
+                                let target_width = target_width.max(40);
+                                if (area.allocated_width() - target_width).abs() > 2 {
+                                    area.set_size_request(target_width, -1);
+                                    log::debug!(
+                                        "Viewport: Resized to {}x{} (aspect ratio: {:.2})",
+                                        target_width,
+                                        current_height as i32,
+                                        workspace_aspect_ratio
+                                    );
                                 }
                             }
+                        }
                         area.queue_draw();
                     }
                     glib::ControlFlow::Continue
@@ -320,18 +320,18 @@ impl ViewportModule {
             }
 
             // Restart screen capture if workspace changed
-            if needs_capture_restart
-                && let Ok(capture) = screen_capture.try_borrow()
-            {
+            if needs_capture_restart && let Ok(capture) = screen_capture.try_borrow() {
                 capture.stop_capture();
 
                 // Start new capture asynchronously
                 let capture_clone = screen_capture.clone();
+                #[allow(clippy::await_holding_refcell_ref)]
                 glib::spawn_future_local(async move {
-                    if let Ok(capture) = capture_clone.try_borrow()
-                        && let Err(e) = capture.start_capture().await
-                    {
-                        log::error!("Viewport: Failed to start screen capture: {}", e);
+                    if let Ok(capture) = capture_clone.try_borrow() {
+                        let result = capture.start_capture().await;
+                        if let Err(e) = result {
+                            log::error!("Viewport: Failed to start screen capture: {}", e);
+                        }
                     }
                 });
             }
